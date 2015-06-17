@@ -20,3 +20,7 @@ var (
 func newError(m string) error {
 	return fmt.Errorf("smp: %s", m)
 }
+
+func newErrorf(format string, a ...interface{}) error {
+	return newError(fmt.Sprintf(format, a...))
+}

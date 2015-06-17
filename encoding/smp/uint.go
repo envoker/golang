@@ -39,7 +39,7 @@ func encodeUint(v reflect.Value, w io.Writer) error {
 		}
 	}
 
-	if _, err := w.Write(data); err != nil {
+	if _, err := writeFull(w, data); err != nil {
 		return err
 	}
 
@@ -56,7 +56,7 @@ func decodeUint(v reflect.Value, r io.Reader) error {
 	case reflect.Uint8:
 		{
 			data := b[:sizeOfUint8]
-			if _, err = io.ReadFull(r, data); err != nil {
+			if _, err = readFull(r, data); err != nil {
 				return err
 			}
 			u := data[0]
@@ -66,7 +66,7 @@ func decodeUint(v reflect.Value, r io.Reader) error {
 	case reflect.Uint16:
 		{
 			data := b[:sizeOfUint16]
-			if _, err = io.ReadFull(r, data); err != nil {
+			if _, err = readFull(r, data); err != nil {
 				return err
 			}
 			u := byteOrder.Uint16(data)
@@ -76,7 +76,7 @@ func decodeUint(v reflect.Value, r io.Reader) error {
 	case reflect.Uint32:
 		{
 			data := b[:sizeOfUint32]
-			if _, err = io.ReadFull(r, data); err != nil {
+			if _, err = readFull(r, data); err != nil {
 				return err
 			}
 			u := byteOrder.Uint32(data)
@@ -86,7 +86,7 @@ func decodeUint(v reflect.Value, r io.Reader) error {
 	case reflect.Uint64:
 		{
 			data := b[:sizeOfUint64]
-			if _, err = io.ReadFull(r, data); err != nil {
+			if _, err = readFull(r, data); err != nil {
 				return err
 			}
 			u := byteOrder.Uint64(data)

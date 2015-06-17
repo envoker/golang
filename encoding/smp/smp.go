@@ -111,7 +111,7 @@ func encodeString(v reflect.Value, w io.Writer) error {
 		return err
 	}
 
-	if _, err = w.Write(dataBytes); err != nil {
+	if _, err = writeFull(w, dataBytes); err != nil {
 		return err
 	}
 
@@ -128,7 +128,7 @@ func decodeString(v reflect.Value, r io.Reader) error {
 
 	dataBytes := make([]byte, dataSize)
 
-	if _, err := io.ReadFull(r, dataBytes); err != nil {
+	if _, err := readFull(r, dataBytes); err != nil {
 		return err
 	}
 
@@ -177,7 +177,7 @@ func encodeByteSlice(v reflect.Value, w io.Writer) error {
 		return err
 	}
 
-	if _, err = w.Write(dataBytes); err != nil {
+	if _, err = writeFull(w, dataBytes); err != nil {
 		return err
 	}
 
@@ -194,7 +194,7 @@ func decodeByteSlice(v reflect.Value, r io.Reader) error {
 
 	dataBytes := make([]byte, dataSize)
 
-	if _, err := io.ReadFull(r, dataBytes); err != nil {
+	if _, err := readFull(r, dataBytes); err != nil {
 		return err
 	}
 

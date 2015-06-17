@@ -1,0 +1,7 @@
+cbor - Concise Binary Object Representation
+
+cbor.io
+cbor.me - online encoder
+
+example: https://code.google.com/p/cbor/source/browse/#hg%2Fgo
+http://tools.ietf.org/html/rfc7049#section-2.1
