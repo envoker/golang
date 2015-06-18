@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"fmt"
 
 	"github.com/envoker/golang/encoding/smp"
@@ -26,14 +25,12 @@ func MarshalTest() error {
 		Size: 15,
 	}
 
-	buffer := bytes.NewBuffer([]byte{})
-
-	err := smp.Marshal(&u, buffer)
+	bs, err := smp.Marshal(&u)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("% x\n", buffer.Bytes())
+	fmt.Printf("% x\n", bs)
 
 	return nil
 }
@@ -50,16 +47,14 @@ func UnmarshalTest() error {
 	//var x, y uint64
 	//x = 967867867867860
 
-	buffer := bytes.NewBuffer([]byte{})
-
-	err := smp.Marshal(&x, buffer)
+	bs, err := smp.Marshal(&x)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("% x\n", buffer.Bytes())
+	fmt.Printf("% x\n", bs)
 
-	if err := smp.Unmarshal(&y, buffer); err != nil {
+	if err := smp.Unmarshal(bs, &y); err != nil {
 		return err
 	}
 

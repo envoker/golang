@@ -15,6 +15,8 @@ var (
 
 	ErrorShortSize  = newError("ErrorShortSize")
 	ErrorTypeNotPtr = newError("ErrorTypeNotPtr")
+
+	errorReadNotFull = newError("errorReadNotFull")
 )
 
 func newError(m string) error {
