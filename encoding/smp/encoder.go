@@ -7,12 +7,12 @@ import (
 )
 
 type Encoder struct {
-	w         io.Writer
-	byteOrder binary.ByteOrder
+	w     io.Writer
+	order binary.ByteOrder
 }
 
-func NewEncoder(w io.Writer, byteOrder binary.ByteOrder) *Encoder {
-	return &Encoder{w, byteOrder}
+func NewEncoder(w io.Writer, order binary.ByteOrder) *Encoder {
+	return &Encoder{w, order}
 }
 
 func (e *Encoder) Encode(val interface{}) error {
@@ -70,23 +70,23 @@ func (e *Encoder) encodeUint(v reflect.Value) error {
 	case reflect.Uint16:
 		{
 			data = b[:sizeOfUint16]
-			e.byteOrder.PutUint16(data, uint16(u))
+			e.order.PutUint16(data, uint16(u))
 		}
 
 	case reflect.Uint32:
 		{
 			data = b[:sizeOfUint32]
-			e.byteOrder.PutUint32(data, uint32(u))
+			e.order.PutUint32(data, uint32(u))
 		}
 
 	case reflect.Uint64:
 		{
 			data = b[:sizeOfUint64]
-			e.byteOrder.PutUint64(data, u)
+			e.order.PutUint64(data, u)
 		}
 	}
 
-	if _, err := e.writeFull(data); err != nil {
+	if _, err := writeFull(e.w, data); err != nil {
 		return err
 	}
 
@@ -98,7 +98,7 @@ func (e *Encoder) encodeSlice(v reflect.Value) error {
 	t := v.Type()
 
 	if t.Elem().Kind() == reflect.Uint8 {
-		return e.encodeByteSlice(v)
+		return e.encodeBytes(v)
 	}
 
 	return ErrorEncodeType
@@ -116,14 +116,14 @@ func (e *Encoder) encodeString(v reflect.Value) error {
 		return err
 	}
 
-	if _, err = e.writeFull(dataBytes); err != nil {
+	if _, err = writeFull(e.w, dataBytes); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (e *Encoder) encodeByteSlice(v reflect.Value) error {
+func (e *Encoder) encodeBytes(v reflect.Value) error {
 
 	var (
 		err       error
@@ -135,7 +135,7 @@ func (e *Encoder) encodeByteSlice(v reflect.Value) error {
 		return err
 	}
 
-	if _, err = e.writeFull(dataBytes); err != nil {
+	if _, err = writeFull(e.w, dataBytes); err != nil {
 		return err
 	}
 
@@ -162,20 +162,4 @@ func (e *Encoder) encodeStruct(v reflect.Value) error {
 
 func (e *Encoder) encodePtr(v reflect.Value) error {
 	return e.encodeValue(v.Elem())
-}
-
-func (e *Encoder) writeFull(bs []byte) (n int, err error) {
-
-	n, err = e.w.Write(bs)
-	if err != nil {
-		err = newErrorf("writeFull: %s", err.Error())
-		return
-	}
-
-	if n != len(bs) {
-		err = newError("writeFull")
-		return
-	}
-
-	return
 }

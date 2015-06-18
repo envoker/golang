@@ -7,12 +7,12 @@ import (
 )
 
 type Decoder struct {
-	r         io.Reader
-	byteOrder binary.ByteOrder
+	r     io.Reader
+	order binary.ByteOrder
 }
 
-func NewDecoder(r io.Reader, byteOrder binary.ByteOrder) *Decoder {
-	return &Decoder{r, byteOrder}
+func NewDecoder(r io.Reader, order binary.ByteOrder) *Decoder {
+	return &Decoder{r, order}
 }
 
 func (d *Decoder) Decode(val interface{}) error {
@@ -66,7 +66,7 @@ func (d *Decoder) decodeUint(v reflect.Value) error {
 	case reflect.Uint8:
 		{
 			data := b[:sizeOfUint8]
-			if _, err = d.readFull(data); err != nil {
+			if _, err = readFull(d.r, data); err != nil {
 				return err
 			}
 			u := data[0]
@@ -76,30 +76,30 @@ func (d *Decoder) decodeUint(v reflect.Value) error {
 	case reflect.Uint16:
 		{
 			data := b[:sizeOfUint16]
-			if _, err = d.readFull(data); err != nil {
+			if _, err = readFull(d.r, data); err != nil {
 				return err
 			}
-			u := d.byteOrder.Uint16(data)
+			u := d.order.Uint16(data)
 			v.SetUint(uint64(u))
 		}
 
 	case reflect.Uint32:
 		{
 			data := b[:sizeOfUint32]
-			if _, err = d.readFull(data); err != nil {
+			if _, err = readFull(d.r, data); err != nil {
 				return err
 			}
-			u := d.byteOrder.Uint32(data)
+			u := d.order.Uint32(data)
 			v.SetUint(uint64(u))
 		}
 
 	case reflect.Uint64:
 		{
 			data := b[:sizeOfUint64]
-			if _, err = d.readFull(data); err != nil {
+			if _, err = readFull(d.r, data); err != nil {
 				return err
 			}
-			u := d.byteOrder.Uint64(data)
+			u := d.order.Uint64(data)
 			v.SetUint(u)
 		}
 	}
@@ -112,7 +112,7 @@ func (d *Decoder) decodeSlice(v reflect.Value) error {
 	t := v.Type()
 
 	if t.Elem().Kind() == reflect.Uint8 {
-		return d.decodeByteSlice(v)
+		return d.decodeBytes(v)
 	}
 
 	return ErrorEncodeType
@@ -128,7 +128,7 @@ func (d *Decoder) decodeString(v reflect.Value) error {
 
 	dataBytes := make([]byte, dataSize)
 
-	if _, err := d.readFull(dataBytes); err != nil {
+	if _, err := readFull(d.r, dataBytes); err != nil {
 		return err
 	}
 
@@ -137,7 +137,7 @@ func (d *Decoder) decodeString(v reflect.Value) error {
 	return nil
 }
 
-func (d *Decoder) decodeByteSlice(v reflect.Value) error {
+func (d *Decoder) decodeBytes(v reflect.Value) error {
 
 	var dataSize uint16
 
@@ -147,7 +147,7 @@ func (d *Decoder) decodeByteSlice(v reflect.Value) error {
 
 	dataBytes := make([]byte, dataSize)
 
-	if _, err := d.readFull(dataBytes); err != nil {
+	if _, err := readFull(d.r, dataBytes); err != nil {
 		return err
 	}
 
@@ -176,20 +176,4 @@ func (d *Decoder) decodeStruct(v reflect.Value) error {
 
 func (d *Decoder) decodePtr(v reflect.Value) error {
 	return d.decodeValue(v.Elem())
-}
-
-func (d *Decoder) readFull(bs []byte) (n int, err error) {
-
-	n, err = d.r.Read(bs)
-	if err != nil {
-		err = newErrorf("readFull: %s", err.Error())
-		return
-	}
-
-	if n != len(bs) {
-		err = newError("readFull")
-		return
-	}
-
-	return
 }

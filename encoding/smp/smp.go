@@ -6,13 +6,6 @@ import (
 	"reflect"
 )
 
-const (
-	sizeOfUint8  = 1
-	sizeOfUint16 = 2
-	sizeOfUint32 = 4
-	sizeOfUint64 = 8
-)
-
 type Marshaler interface {
 	MarshalSMP(*Encoder) error
 }
@@ -28,14 +21,14 @@ var (
 
 func Marshal(val interface{}) ([]byte, error) {
 
-	buffer := new(bytes.Buffer)
-	e := NewEncoder(buffer, binary.BigEndian)
+	w := new(bytes.Buffer)
+	e := NewEncoder(w, binary.BigEndian)
 
 	if err := e.Encode(val); err != nil {
 		return nil, err
 	}
 
-	return buffer.Bytes(), nil
+	return w.Bytes(), nil
 }
 
 func Unmarshal(data []byte, val interface{}) error {
@@ -43,5 +36,9 @@ func Unmarshal(data []byte, val interface{}) error {
 	r := bytes.NewReader(data)
 	d := NewDecoder(r, binary.BigEndian)
 
-	return d.Decode(val)
+	if err := d.Decode(val); err != nil {
+		return err
+	}
+
+	return nil
 }
