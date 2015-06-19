@@ -1,6 +1,7 @@
 package der
 
 import (
+	"bytes"
 	"io"
 )
 
@@ -23,6 +24,44 @@ type ContextDeserializer interface {
 }
 
 //------------------------------------------------------------------------------
+func Serialize(s Serializer) ([]byte, error) {
+
+	node, err := s.SerializeDER()
+	if err != nil {
+		return nil, err
+	}
+
+	buffer := new(bytes.Buffer)
+
+	if _, err = node.Encode(buffer); err != nil {
+		return nil, err
+	}
+
+	return buffer.Bytes(), nil
+}
+
+func Deserialize(d Deserializer, data []byte) error {
+
+	buffer := new(bytes.Buffer)
+
+	_, err := buffer.Write(data)
+	if err != nil {
+		return err
+	}
+
+	node := new(Node)
+	if _, err = node.Decode(buffer); err != nil {
+		return err
+	}
+
+	if err = d.DeserializeDER(node); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+/*
 func Serialize(s Serializer, w io.Writer) error {
 
 	var (
@@ -58,7 +97,7 @@ func Deserialize(d Deserializer, r io.Reader) error {
 
 	return err
 }
-
+*/
 //------------------------------------------------------------------------------
 type Node struct {
 	t TagType
