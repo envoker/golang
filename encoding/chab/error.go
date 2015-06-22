@@ -6,7 +6,15 @@ import (
 )
 
 func newError(m string) error {
-	return errors.New(fmt.Sprint("chab:", m))
+	return errors.New(fmt.Sprintf("chab: %s", m))
 }
 
-var UnsupportedTypeError = newError("UnsupportedTypeError")
+func newErrorf(format string, a ...interface{}) error {
+	return newError(fmt.Sprintf(format, a...))
+}
+
+var (
+	errorTypeNotPtr = newError("errorTypeNotPtr")
+	errorEncodeType = newError("errorEncodeType")
+	errorDecodeType = newError("errorDecodeType")
+)

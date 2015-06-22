@@ -13,16 +13,25 @@ const (
 	byteSeparator = '-'
 )
 
-func HiNibble(b byte) byte {
+func hiNibble(b byte) byte {
 	return b >> 4
 }
 
-func LoNibble(b byte) byte {
+func loNibble(b byte) byte {
 	return b & 0x0F
 }
 
-func NibblesToByte(hiNibble byte, loNibble byte) byte {
-	return (hiNibble << 4) | (loNibble & 0x0F)
+func nibblesToByte(hi byte, lo byte) byte {
+
+	return (hi << 4) | (lo & 0x0F)
+}
+
+func byteToNibbles(b byte) (hi, lo byte) {
+
+	hi = b >> 4
+	lo = b & 0x0F
+
+	return
 }
 
 func EncodeToString(src []byte) (s string) {
@@ -35,8 +44,8 @@ func EncodeToString(src []byte) (s string) {
 
 		p := make([]byte, 3)
 		p[0] = byteSeparator
-		p[1] = hexLower[HiNibble(b)]
-		p[2] = hexLower[LoNibble(b)]
+		p[1] = hexLower[hiNibble(b)]
+		p[2] = hexLower[loNibble(b)]
 
 		buffer.Write(p[1:])
 
@@ -44,8 +53,8 @@ func EncodeToString(src []byte) (s string) {
 
 			b = src[i]
 
-			p[1] = hexLower[HiNibble(b)]
-			p[2] = hexLower[LoNibble(b)]
+			p[1] = hexLower[hiNibble(b)]
+			p[2] = hexLower[loNibble(b)]
 
 			buffer.Write(p)
 		}
@@ -95,7 +104,7 @@ func Decode(dest, source []byte) (int, error) {
 		}
 		j++
 
-		dest[i] = NibblesToByte(hiNibble, loNibble)
+		dest[i] = nibblesToByte(hiNibble, loNibble)
 		i++
 	}
 
@@ -126,7 +135,7 @@ func Decode(dest, source []byte) (int, error) {
 				}
 				j++
 
-				dest[i] = NibblesToByte(hiNibble, loNibble)
+				dest[i] = nibblesToByte(hiNibble, loNibble)
 				i++
 			}
 		}
@@ -152,17 +161,17 @@ func HexQuad(bs []byte) string {
 		p[0] = spaceChar
 
 		fill := func(src []byte, dest []byte) {
-			dest[0] = hexUpper[HiNibble(src[0])]
-			dest[1] = hexUpper[LoNibble(src[0])]
+			dest[0] = hexUpper[hiNibble(src[0])]
+			dest[1] = hexUpper[loNibble(src[0])]
 
-			dest[2] = hexUpper[HiNibble(src[1])]
-			dest[3] = hexUpper[LoNibble(src[1])]
+			dest[2] = hexUpper[hiNibble(src[1])]
+			dest[3] = hexUpper[loNibble(src[1])]
 
-			dest[4] = hexUpper[HiNibble(src[2])]
-			dest[5] = hexUpper[LoNibble(src[2])]
+			dest[4] = hexUpper[hiNibble(src[2])]
+			dest[5] = hexUpper[loNibble(src[2])]
 
-			dest[6] = hexUpper[HiNibble(src[3])]
-			dest[7] = hexUpper[LoNibble(src[3])]
+			dest[6] = hexUpper[hiNibble(src[3])]
+			dest[7] = hexUpper[loNibble(src[3])]
 		}
 
 		fill(bs[k:k+4], p[1:])
@@ -183,8 +192,8 @@ func HexQuad(bs []byte) string {
 		}
 
 		for i := 0; i < r; i++ {
-			buffer.WriteByte(hexUpper[HiNibble(bs[k])])
-			buffer.WriteByte(hexUpper[LoNibble(bs[k])])
+			buffer.WriteByte(hexUpper[hiNibble(bs[k])])
+			buffer.WriteByte(hexUpper[loNibble(bs[k])])
 			k++
 		}
 	}

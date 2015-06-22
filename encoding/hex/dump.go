@@ -24,8 +24,8 @@ func Dump(data []byte) string {
 		}
 
 		// write byte
-		buffer.WriteByte(hexLower[HiNibble(b)])
-		buffer.WriteByte(hexLower[LoNibble(b)])
+		buffer.WriteByte(hexLower[hiNibble(b)])
+		buffer.WriteByte(hexLower[loNibble(b)])
 	}
 	return buffer.String()
 }
