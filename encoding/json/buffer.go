@@ -5,6 +5,16 @@ import (
 	"io"
 )
 
+type BufferWriter interface {
+	Write(data []byte) (n int, err error)
+	WriteByte(b byte) error
+}
+
+type BufferReader interface {
+	ReadRune() (r rune, size int, err error)
+	UnreadRune() error
+}
+
 func bw_WriteIndent(bw BufferWriter, indent int) (n int, err error) {
 
 	if indent < 0 {
@@ -12,26 +22,20 @@ func bw_WriteIndent(bw BufferWriter, indent int) (n int, err error) {
 		return
 	}
 
-	var writeCount int
 	n = 0
 	for i := 0; i < indent; i++ {
-		writeCount, err = bw.WriteRune(rc_HorizontalTab)
+		err = bw.WriteByte(rc_HorizontalTab)
 		if err != nil {
 			return
 		}
-		n += writeCount
+		n += 1
 	}
 
 	return
 }
 
-func bw_WriteEndOfLine(bw BufferWriter) (err error) {
-
-	if _, err = bw.WriteRune(rc_NewLine); err != nil {
-		return
-	}
-
-	return
+func bw_WriteEndOfLine(bw BufferWriter) error {
+	return bw.WriteByte(rc_NewLine)
 }
 
 func br_ReadString(br BufferReader, runeIsValid func(r rune) bool) (string, error) {

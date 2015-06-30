@@ -53,6 +53,12 @@ const (
 )
 
 var (
+	data_True  = []byte("true")
+	data_False = []byte("false")
+	data_Null  = []byte("null")
+)
+
+var (
 	vs_bool = []string{
 		"true", "TRUE", "True",
 		"false", "FALSE", "False",

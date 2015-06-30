@@ -62,11 +62,10 @@ func (this *Boolean) InitRandomInstance(r *rand.Rand) (err error) {
 //---------------------------------------------------------------------------------
 type String string
 
-func (this *String) SerializeJSON() (v cjson.Value, err error) {
+func (this *String) SerializeJSON() (cjson.Value, error) {
 
-	v = cjson.NewString(string(*this))
-
-	return
+	v := cjson.NewString(string(*this))
+	return v, nil
 }
 
 func (this *String) DeserializeJSON(v cjson.Value) error {

@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +10,49 @@ import (
 )
 
 func main() {
+
+	var s string
+	//s = "\t\r'\n\\\"АБВГДЕЁ ... ЭЮЯ;.,"
+	s = "/home/bin/work/test.js"
+
+	if err := stringTest(s); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+
+	if err := goStringTest(s); err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+}
+
+func stringTest(s string) error {
+
+	var _s = String(s)
+
+	bs, err := cjson.Serialize(&_s)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("cjson:\t", string(bs))
+
+	return nil
+}
+
+func goStringTest(s string) error {
+
+	bs, err := json.Marshal(&s)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println("json:\t", string(bs))
+
+	return nil
+}
+
+func Test() {
 
 	const n = 30000
 	var v1, v2 IntArray
@@ -39,7 +81,10 @@ func CJsonTest(v1 interface{}, v2 interface{}, n int) error {
 		fmt.Println(time.Since(start))
 	}()
 
-	var err error
+	var (
+		err  error
+		data []byte
+	)
 
 	s, ok := v1.(cjson.Serializer)
 	if !ok {
@@ -57,20 +102,18 @@ func CJsonTest(v1 interface{}, v2 interface{}, n int) error {
 		return errors.New("bcl.InstanceRandomizer")
 	}
 
-	buffer := new(bytes.Buffer)
-
 	for i := 0; i < n; i++ {
 
 		ir.InitRandomInstance(r)
-		buffer.Reset()
 
-		if err = cjson.SerializeIndent(s, buffer); err != nil {
+		data, err = cjson.SerializeIndent(s)
+		if err != nil {
 			return err
 		}
 
 		//fmt.Println(string(buffer.Bytes()))
 
-		if err = cjson.Deserialize(d, buffer); err != nil {
+		if err = cjson.Deserialize(d, data); err != nil {
 			return err
 		}
 	}
@@ -123,10 +166,9 @@ func GoJsonTest(v1 interface{}, v2 interface{}, n int) error {
 func TestJson() error {
 
 	var (
-		ps2    PersoneArray
-		err    error
-		s      string
-		buffer = new(bytes.Buffer)
+		ps2 PersoneArray
+		err error
+		s   string
 	)
 
 	ps1 := PersoneArray{
@@ -165,42 +207,42 @@ func TestJson() error {
 			},
 		}
 
-		buffer.Reset()
-		if err = cjson.SerializeIndent(&f1, buffer); err != nil {
+		data, err := cjson.SerializeIndent(&f1)
+		if err != nil {
 			return err
 		}
 
-		s = string(buffer.Bytes())
+		s = string(data)
 		fmt.Println(s)
 	}
 
 	//----------------------------------------------
 
-	buffer.Reset()
-	if err = cjson.Serialize(&ps1, buffer); err != nil {
+	data, err := cjson.Serialize(&ps1)
+	if err != nil {
 		err = errors.New(fmt.Sprintf("%s: %v\n", "2", err))
 		return err
 	}
 
-	s = string(buffer.Bytes())
+	s = string(data)
 	fmt.Println(s)
 
 	//----------------------------------------------
-
-	if err = cjson.Deserialize(&ps2, buffer); err != nil {
+	err = cjson.Deserialize(&ps2, data)
+	if err != nil {
 		err = errors.New(fmt.Sprintf("%s: %v\n", "3", err))
 		return err
 	}
 
 	//----------------------------------------------
 
-	buffer.Reset()
-	if err = cjson.SerializeIndent(&ps2, buffer); err != nil {
+	data, err = cjson.SerializeIndent(&ps2)
+	if err != nil {
 		err = errors.New(fmt.Sprintf("%s: %v\n", "6", err))
 		return err
 	}
 
-	s = string(buffer.Bytes())
+	s = string(data)
 	fmt.Println(s)
 
 	return err

@@ -5,8 +5,8 @@ import (
 	"fmt"
 )
 
-func newError(message string) error {
-	return errors.New(fmt.Sprint("cjson: ", message))
+func newError(format string, a ...interface{}) error {
+	return errors.New("cjson: " + fmt.Sprintf(format, a...))
 }
 
 var (

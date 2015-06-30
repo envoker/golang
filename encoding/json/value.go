@@ -1,75 +1,9 @@
 package json
 
-//---------------------------------------------------------------------------------
-type BufferWriter interface {
-	WriteRune(r rune) (n int, err error)
-	WriteString(s string) (n int, err error)
-}
-
-type BufferReader interface {
-	ReadRune() (r rune, size int, err error)
-	UnreadRune() (err error)
-}
-
 type Value interface {
-	encodeIndent(bw BufferWriter, indent int) (err error)
-	encode(bw BufferWriter) (err error)
-	decode(br BufferReader) (err error)
-}
-
-type Serializer interface {
-	SerializeJSON() (v Value, err error)
-}
-
-type Deserializer interface {
-	DeserializeJSON(v Value) (err error)
-}
-
-//---------------------------------------------------------------------------------
-func SerializeIndent(s Serializer, bw BufferWriter) error {
-
-	v, err := s.SerializeJSON()
-	if err != nil {
-		return err
-	}
-
-	if err = v.encodeIndent(bw, 0); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Serialize(s Serializer, bw BufferWriter) error {
-
-	v, err := s.SerializeJSON()
-	if err != nil {
-		return err
-	}
-
-	if err = v.encode(bw); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Deserialize(d Deserializer, br BufferReader) error {
-
-	v, err := valueFromBuffer(br)
-	if err != nil {
-		return err
-	}
-
-	if err = v.decode(br); err != nil {
-		return err
-	}
-
-	if err = d.DeserializeJSON(v); err != nil {
-		return err
-	}
-
-	return nil
+	encodeIndent(bw BufferWriter, indent int) error
+	encode(bw BufferWriter) error
+	decode(br BufferReader) error
 }
 
 func valueIsConstructed(v Value) bool {
