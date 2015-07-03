@@ -2,18 +2,10 @@ package chab
 
 import (
 	"encoding/binary"
-	"io"
 	"math"
 )
 
 var byteOrder = binary.BigEndian
-
-const (
-	sizeOfUint8  = 1
-	sizeOfUint16 = 2
-	sizeOfUint32 = 4
-	sizeOfUint64 = 8
-)
 
 func nibblesToByte(hi, lo byte) byte {
 	return (hi << 4) | (lo & 0xF)
@@ -27,17 +19,38 @@ func byteToNibbles(b byte) (hi, lo byte) {
 	return
 }
 
-// quo = x / y
-// rem = x % y
-func quoRem(x, y int) (quo, rem int) {
+func writeTag(w BufferWriter, tagType byte, addInfo byte) error {
 
-	quo = x / y
-	rem = x - quo*y
+	b := nibblesToByte(tagType, addInfo)
 
-	return
+	if err := w.WriteByte(b); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func writeFull(w io.Writer, bs []byte) (n int, err error) {
+func readTag(r BufferReader, tagType byte) (addInfo byte, err error) {
+
+	b, err := r.ReadByte()
+	if err != nil {
+		return 0, err
+	}
+
+	var t byte
+
+	t, addInfo = byteToNibbles(b)
+	if t != tagType {
+		r.UnreadByte()
+
+		nameType := nameGeneralType[tagType]
+		return 0, newErrorf("readTag: tag is not %s", nameType)
+	}
+
+	return addInfo, nil
+}
+
+func writeFull(w BufferWriter, bs []byte) (n int, err error) {
 
 	n, err = w.Write(bs)
 	if err != nil {
@@ -53,7 +66,7 @@ func writeFull(w io.Writer, bs []byte) (n int, err error) {
 	return
 }
 
-func readFull(r io.Reader, bs []byte) (n int, err error) {
+func readFull(r BufferReader, bs []byte) (n int, err error) {
 
 	n, err = r.Read(bs)
 	if err != nil {
@@ -70,67 +83,70 @@ func readFull(r io.Reader, bs []byte) (n int, err error) {
 }
 
 // unsigned int
-func encodeTagUint(w io.Writer, t byte, u uint64) error {
+func encodeTagUint(w BufferWriter, tagType byte, u uint64) error {
 
-	var bs [1 + sizeOfUint64]byte
-	var data []byte
+	var (
+		bs      [sizeOfUint64]byte
+		data    []byte
+		addInfo byte
+	)
 
 	switch {
 
 	case u <= math.MaxUint8:
 		{
-			data = bs[:1+sizeOfUint8]
-			data[0] = nibblesToByte(t, sizeOfUint8)
-			data[1] = uint8(u)
+			addInfo = sizeOfUint8
+			data = bs[:sizeOfUint8]
+			data[0] = uint8(u)
 		}
 
 	case u <= math.MaxUint16:
 		{
-			data = bs[:1+sizeOfUint16]
-			data[0] = nibblesToByte(t, sizeOfUint16)
-			byteOrder.PutUint16(data[1:], uint16(u))
+			addInfo = sizeOfUint16
+			data = bs[:sizeOfUint16]
+			byteOrder.PutUint16(data, uint16(u))
 		}
 
 	case u <= math.MaxUint32:
 		{
-			data = bs[:1+sizeOfUint32]
-			data[0] = nibblesToByte(t, sizeOfUint32)
-			byteOrder.PutUint32(data[1:], uint32(u))
+			addInfo = sizeOfUint32
+			data = bs[:sizeOfUint32]
+			byteOrder.PutUint32(data, uint32(u))
 		}
 
 	default:
 		{
-			data = bs[:1+sizeOfUint64]
-			data[0] = nibblesToByte(t, sizeOfUint64)
-			byteOrder.PutUint64(data[1:], uint64(u))
+			addInfo = sizeOfUint64
+			data = bs[:sizeOfUint64]
+			byteOrder.PutUint64(data, uint64(u))
 		}
 	}
 
-	if _, err := writeFull(w, data); err != nil {
+	err := writeTag(w, tagType, addInfo)
+	if err != nil {
+		return err
+	}
+
+	if _, err = writeFull(w, data); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func decodeTagUint(r io.Reader, t byte) (u uint64, err error) {
+func decodeTagUint(r BufferReader, tagType byte) (u uint64, err error) {
 
-	var bs [1 + sizeOfUint64]byte
-	var data []byte
+	var (
+		bs      [sizeOfUint64]byte
+		data    []byte
+		addInfo byte
+	)
 
-	data = bs[:1]
-	if _, err = readFull(r, data); err != nil {
+	if addInfo, err = readTag(r, tagType); err != nil {
 		return
 	}
 
-	tag, lenSize := byteToNibbles(data[0])
-
-	if tag != t {
-		err = newError("wrong type")
-		return
-	}
-
-	switch lenSize {
+	switch addInfo {
 
 	case sizeOfUint8:
 		{
@@ -169,7 +185,7 @@ func decodeTagUint(r io.Reader, t byte) (u uint64, err error) {
 		}
 
 	default:
-		err = newError("wrong len size")
+		err = newErrorf("decodeTagUint: addInfo=%d", addInfo)
 		return
 	}
 
@@ -177,70 +193,73 @@ func decodeTagUint(r io.Reader, t byte) (u uint64, err error) {
 }
 
 // signed int
-func encodeTagInt(w io.Writer, t byte, i int64) error {
+func encodeTagInt(w BufferWriter, tagType byte, i int64) error {
 
-	var bs [1 + sizeOfUint64]byte
-	var data []byte
+	var (
+		bs      [sizeOfUint64]byte
+		data    []byte
+		addInfo byte
+	)
 
 	switch {
 
 	case (math.MinInt8 <= i) && (i <= math.MaxInt8):
 		{
+			addInfo = sizeOfUint8
+			data = bs[:sizeOfUint8]
 			i8 := int8(i)
-			data = bs[:1+sizeOfUint8]
-			data[0] = nibblesToByte(t, sizeOfUint8)
-			data[1] = uint8(i8)
+			data[0] = uint8(i8)
 		}
 
 	case (math.MinInt16 <= i) && (i <= math.MaxInt16):
 		{
+			addInfo = sizeOfUint16
+			data = bs[:sizeOfUint16]
 			i16 := int16(i)
-			data = bs[:1+sizeOfUint16]
-			data[0] = nibblesToByte(t, sizeOfUint16)
-			byteOrder.PutUint16(data[1:], uint16(i16))
+			byteOrder.PutUint16(data, uint16(i16))
 		}
 
 	case (math.MinInt32 <= i) && (i <= math.MaxInt32):
 		{
+			addInfo = sizeOfUint32
+			data = bs[:sizeOfUint32]
 			i32 := int32(i)
-			data = bs[:1+sizeOfUint32]
-			data[0] = nibblesToByte(t, sizeOfUint32)
-			byteOrder.PutUint32(data[1:], uint32(i32))
+			byteOrder.PutUint32(data, uint32(i32))
 		}
 
 	default:
 		{
-			data = bs[:1+sizeOfUint64]
-			data[0] = nibblesToByte(t, sizeOfUint64)
-			byteOrder.PutUint64(data[1:], uint64(i))
+			addInfo = sizeOfUint64
+			data = bs[:sizeOfUint64]
+			byteOrder.PutUint64(data, uint64(i))
 		}
 	}
 
-	if _, err := writeFull(w, data); err != nil {
+	err := writeTag(w, tagType, addInfo)
+	if err != nil {
+		return err
+	}
+
+	if _, err = writeFull(w, data); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func decodeTagInt(r io.Reader, t byte) (i int64, err error) {
+func decodeTagInt(r BufferReader, t byte) (i int64, err error) {
 
-	var bs [1 + sizeOfUint64]byte
-	var data []byte
+	var (
+		bs      [sizeOfUint64]byte
+		data    []byte
+		addInfo byte
+	)
 
-	data = bs[:1]
-	if _, err = readFull(r, data); err != nil {
-		return
+	if addInfo, err = readTag(r, t); err != nil {
+		return 0, err
 	}
 
-	tag, lenSize := byteToNibbles(data[0])
-
-	if tag != t {
-		err = newError("wrong type")
-		return
-	}
-
-	switch lenSize {
+	switch addInfo {
 
 	case sizeOfUint8:
 		{
@@ -282,7 +301,7 @@ func decodeTagInt(r io.Reader, t byte) (i int64, err error) {
 		}
 
 	default:
-		err = newError("wrong len size")
+		err = newErrorf("decodeTagInt: addInfo=%d", addInfo)
 		return
 	}
 

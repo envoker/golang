@@ -1,7 +1,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"time"
@@ -59,22 +58,6 @@ func Test() error {
 
 	//fmt.Println(b)
 	fmt.Printf("%+v\n", b)
-
-	return nil
-}
-
-func jsonTest() error {
-
-	bs := []byte("[1,2,3,4,99,-1]")
-
-	var a []int
-
-	err := json.Unmarshal(bs, &a)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(a)
 
 	return nil
 }

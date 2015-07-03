@@ -1,7 +1,5 @@
 package chab
 
-type generalType int
-
 const (
 	gtNull = iota
 	gtBool
@@ -16,9 +14,29 @@ const (
 	gtStop
 )
 
-var (
-	tag_Null = nibblesToByte(gtNull, 0)
+var nameGeneralType = map[byte]string{
+	gtNull:     "Null",
+	gtBool:     "Bool",
+	gtSigned:   "Signed",
+	gtUnsigned: "Unsigned",
+	gtFloat:    "Float",
+	gtBytes:    "Bytes",
+	gtString:   "String",
+	gtArray:    "Array",
+	gtMap:      "Map",
+	gtExtended: "Extended",
+	gtStop:     "Stop",
+}
 
-	tag_False = nibblesToByte(gtBool, 0)
-	tag_True  = nibblesToByte(gtBool, 1)
+const (
+	maxUint = ^uint(0)
+	maxInt  = int(maxUint >> 1)
+	minInt  = -maxInt - 1
+)
+
+const (
+	sizeOfUint8  = 1
+	sizeOfUint16 = 2
+	sizeOfUint32 = 4
+	sizeOfUint64 = 8
 )

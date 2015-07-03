@@ -46,7 +46,7 @@ where:
 	Map			8
 	Extended 	9
 	
-* BBBB (low nibble) - it depends on the type of
+* BBBB (low nibble) - additional info (it depends on the type of)
 	
 	Null 		- (0)
 	Bool 		- (0): false; (1): true

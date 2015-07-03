@@ -1,19 +1,22 @@
 package chab
 
 import (
-	"fmt"
-	"io"
 	"math"
 	"reflect"
 )
 
-type Encoder struct {
-	w io.Writer
+type BufferWriter interface {
+	Write(p []byte) (n int, err error)
+	WriteByte(c byte) error
 }
 
-type encodeFunc func(io.Writer, reflect.Value) error
+type Encoder struct {
+	w BufferWriter
+}
 
-func NewEncoder(w io.Writer) *Encoder {
+type encodeFunc func(BufferWriter, reflect.Value) error
+
+func NewEncoder(w BufferWriter) *Encoder {
 	return &Encoder{w}
 }
 
@@ -22,7 +25,7 @@ func (e *Encoder) Encode(val interface{}) error {
 	var v = reflect.ValueOf(val)
 
 	t := v.Type()
-	encodeFn := baseEncoder(t)
+	encodeFn := baseEncode(t)
 
 	err := encodeFn(e.w, v)
 	if err != nil {
@@ -32,10 +35,10 @@ func (e *Encoder) Encode(val interface{}) error {
 	return nil
 }
 
-func baseEncoder(t reflect.Type) encodeFunc {
+func baseEncode(t reflect.Type) encodeFunc {
 
 	if t.Implements(typeMarshaler) {
-		return marshalerEncoder
+		return marshalerEncode
 	}
 
 	switch k := t.Kind(); k {
@@ -43,10 +46,10 @@ func baseEncoder(t reflect.Type) encodeFunc {
 	case reflect.Bool:
 		return boolEncode
 
-	case reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+	case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
 		return intEncode
 
-	case reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+	case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
 		return uintEncode
 
 	case reflect.Float32:
@@ -62,21 +65,19 @@ func baseEncoder(t reflect.Type) encodeFunc {
 		return structEncode
 
 	case reflect.Array:
-		return newArrayEncoder(t)
+		return newArrayEncode(t)
 
 	case reflect.Ptr:
-		return newPtrEncoder(t)
+		return newPtrEncode(t)
 
 	case reflect.Slice:
-		return newSliceEncoder(t)
+		return newSliceEncode(t)
 	}
 
 	return nil
 }
 
-func marshalerEncoder(w io.Writer, v reflect.Value) error {
-
-	fmt.Println("interface Marshaler")
+func marshalerEncode(w BufferWriter, v reflect.Value) error {
 
 	if (v.Kind() == reflect.Ptr) && v.IsNil() {
 		return nullEncoder(w, v)
@@ -94,57 +95,56 @@ func marshalerEncoder(w io.Writer, v reflect.Value) error {
 	return nil
 }
 
-func nullEncoder(w io.Writer, v reflect.Value) error {
+func nullEncoder(w BufferWriter, v reflect.Value) error {
 
-	var bs [1]byte
-	data := bs[:]
+	var addInfo byte = 0
 
-	data[0] = tag_Null
-
-	if _, err := writeFull(w, data); err != nil {
+	if err := writeTag(w, gtNull, addInfo); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func boolEncode(w io.Writer, v reflect.Value) error {
+func boolEncode(w BufferWriter, v reflect.Value) error {
 
-	var bs [1]byte
-	data := bs[:]
+	var addInfo byte
 
 	if v.Bool() {
-		data[0] = tag_False
+		addInfo = 1
 	} else {
-		data[0] = tag_True
+		addInfo = 0
 	}
 
-	if _, err := writeFull(w, data); err != nil {
+	if err := writeTag(w, gtBool, addInfo); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func intEncode(w io.Writer, v reflect.Value) error {
+func intEncode(w BufferWriter, v reflect.Value) error {
 
 	return encodeTagInt(w, gtSigned, v.Int())
 }
 
-func uintEncode(w io.Writer, v reflect.Value) error {
+func uintEncode(w BufferWriter, v reflect.Value) error {
 
 	return encodeTagUint(w, gtUnsigned, v.Uint())
 }
 
-func float32Encode(w io.Writer, v reflect.Value) error {
+func float32Encode(w BufferWriter, v reflect.Value) error {
 
-	var bs [1 + sizeOfUint32]byte
+	addInfo := byte(sizeOfUint32)
+	if err := writeTag(w, gtFloat, addInfo); err != nil {
+		return err
+	}
+
+	var bs [sizeOfUint32]byte
 	data := bs[:]
 
 	u := math.Float32bits(float32(v.Float()))
-
-	data[0] = nibblesToByte(gtFloat, sizeOfUint32)
-	byteOrder.PutUint32(data[1:], u)
+	byteOrder.PutUint32(data, u)
 
 	if _, err := writeFull(w, data); err != nil {
 		return err
@@ -153,15 +153,18 @@ func float32Encode(w io.Writer, v reflect.Value) error {
 	return nil
 }
 
-func float64Encode(w io.Writer, v reflect.Value) error {
+func float64Encode(w BufferWriter, v reflect.Value) error {
 
-	var bs [1 + sizeOfUint64]byte
+	addInfo := byte(sizeOfUint64)
+	if err := writeTag(w, gtFloat, addInfo); err != nil {
+		return err
+	}
+
+	var bs [sizeOfUint64]byte
 	data := bs[:]
 
 	u := math.Float64bits(v.Float())
-
-	data[0] = nibblesToByte(gtFloat, sizeOfUint64)
-	byteOrder.PutUint64(data[1:], u)
+	byteOrder.PutUint64(data, u)
 
 	if _, err := writeFull(w, data); err != nil {
 		return err
@@ -170,11 +173,29 @@ func float64Encode(w io.Writer, v reflect.Value) error {
 	return nil
 }
 
-func stringEncode(w io.Writer, v reflect.Value) error {
+func bytesEncode(w BufferWriter, v reflect.Value) error {
+
+	data := v.Bytes()
+	u := uint64(len(data))
+
+	err := encodeTagUint(w, gtBytes, u)
+	if err != nil {
+		return err
+	}
+
+	if _, err := writeFull(w, data); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func stringEncode(w BufferWriter, v reflect.Value) error {
 
 	data := []byte(v.String())
+	u := uint64(len(data))
 
-	err := encodeTagUint(w, gtString, uint64(len(data)))
+	err := encodeTagUint(w, gtString, u)
 	if err != nil {
 		return err
 	}
@@ -191,13 +212,13 @@ type arrayEncoder struct {
 	encodeFn encodeFunc
 }
 
-func newArrayEncoder(t reflect.Type) encodeFunc {
+func newArrayEncode(t reflect.Type) encodeFunc {
 
-	e := arrayEncoder{baseEncoder(t.Elem())}
+	e := arrayEncoder{baseEncode(t.Elem())}
 	return e.encode
 }
 
-func (e *arrayEncoder) encode(w io.Writer, v reflect.Value) error {
+func (e *arrayEncoder) encode(w BufferWriter, v reflect.Value) error {
 
 	n := v.Len()
 
@@ -216,30 +237,13 @@ func (e *arrayEncoder) encode(w io.Writer, v reflect.Value) error {
 }
 
 //----------------------------------------------------------------------------
-func bytesEncode(w io.Writer, v reflect.Value) error {
-
-	data := v.Bytes()
-
-	err := encodeTagUint(w, gtBytes, uint64(len(data)))
-	if err != nil {
-		return err
-	}
-
-	if _, err := writeFull(w, data); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-//----------------------------------------------------------------------------
-func newSliceEncoder(t reflect.Type) encodeFunc {
+func newSliceEncode(t reflect.Type) encodeFunc {
 
 	if t.Elem().Kind() == reflect.Uint8 {
 		return bytesEncode
 	}
 
-	return newArrayEncoder(t)
+	return newArrayEncode(t)
 }
 
 //----------------------------------------------------------------------------
@@ -247,19 +251,23 @@ type ptrEncoder struct {
 	encodeFn encodeFunc
 }
 
-func newPtrEncoder(t reflect.Type) encodeFunc {
+func newPtrEncode(t reflect.Type) encodeFunc {
 
-	e := ptrEncoder{baseEncoder(t.Elem())}
+	e := ptrEncoder{baseEncode(t.Elem())}
 	return e.encode
 }
 
-func (p *ptrEncoder) encode(w io.Writer, v reflect.Value) error {
+func (p *ptrEncoder) encode(w BufferWriter, v reflect.Value) error {
+
+	if (v.Kind() == reflect.Ptr) && v.IsNil() {
+		return nullEncoder(w, v)
+	}
 
 	return p.encodeFn(w, v.Elem())
 }
 
 //----------------------------------------------------------------------------
-func structEncode(w io.Writer, v reflect.Value) error {
+func structEncode(w BufferWriter, v reflect.Value) error {
 
 	t := v.Type()
 	n := t.NumField()
@@ -288,7 +296,7 @@ func structEncode(w io.Writer, v reflect.Value) error {
 		{
 			valueField := v.Field(i)
 
-			encodeFn := baseEncoder(valueField.Type())
+			encodeFn := baseEncode(valueField.Type())
 			if err = encodeFn(w, valueField); err != nil {
 				return err
 			}
