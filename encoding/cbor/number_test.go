@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math"
 	"testing"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 func TestInt64(t *testing.T) {
@@ -44,11 +46,11 @@ func TestInt64(t *testing.T) {
 		return nil
 	}
 
-	r := newRand()
+	r := random.NewRand()
 
 	for i := 0; i < 1000000; i++ {
 
-		n := randInt64(r)
+		n := random.Int64(r)
 		if err := baseTestInt64(n); err != nil {
 			t.Error(err)
 			return
@@ -104,11 +106,11 @@ func TestUint64(t *testing.T) {
 		return nil
 	}
 
-	r := newRand()
+	r := random.NewRand()
 
 	for i := 0; i < 1000000; i++ {
 
-		n := randUint64(r)
+		n := random.Uint64(r)
 		if err := baseTestUint64(n); err != nil {
 			t.Error(err)
 			return

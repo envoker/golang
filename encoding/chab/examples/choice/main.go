@@ -213,13 +213,13 @@ func jsonTest() error {
 func testActor() error {
 
 	var a = Actor{
-	//Pos: &Point{7, -13},	
+		//Pos: &Point{7, -13},
 		Figure: NewFigure(
 			&Circle{
 				Center: Point{-3, -1},
 				Radius: -170.47002,
 			},
-		),	
+		),
 	}
 
 	a_data, err := chab.Marshal(&a)

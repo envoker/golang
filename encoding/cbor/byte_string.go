@@ -3,6 +3,8 @@ package cbor
 import (
 	"bytes"
 	"math/rand"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 type ByteString struct {
@@ -89,7 +91,7 @@ func (this *ByteString) Equal(e Equaler) bool {
 func (this *ByteString) random(r *rand.Rand) error {
 
 	this.bs = make([]byte, r.Intn(16000))
-	randFillBytes(r, this.bs)
+	random.FillBytes(r, this.bs)
 
 	return nil
 }

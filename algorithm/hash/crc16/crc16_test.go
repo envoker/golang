@@ -1,10 +1,9 @@
 package crc16
 
 import (
-	"encoding/binary"
-	"math/rand"
 	"testing"
-	"time"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 var crc16Table = [256]uint16{
@@ -54,7 +53,7 @@ func sample_СhecksumIBM(data []byte) uint16 {
 
 func TestCRC16(t *testing.T) {
 
-	r := newRand()
+	r := random.NewRand()
 
 	const size = 1000
 	b := make([]byte, size)
@@ -62,8 +61,8 @@ func TestCRC16(t *testing.T) {
 
 	for i := 0; i < 100000; i++ {
 
-		n := r.Intn(size)
-		fillBytes(r, b[:n])
+		n := random.Intn(r, size)
+		random.FillBytes(r, b[:n])
 
 		cs1 = sample_СhecksumIBM(b[:n])
 		cs2 = ChecksumIBM(b[:n])
@@ -71,43 +70,6 @@ func TestCRC16(t *testing.T) {
 		if cs1 != cs2 {
 			t.Error("wrong checksum! ", b[:n])
 			return
-		}
-	}
-}
-
-// quo = x / y
-// rem = x % y
-func quoRem(x, y int) (quo, rem int) {
-
-	quo = x / y
-	rem = x - quo*y
-
-	return
-}
-
-func newRand() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
-func fillBytes(r *rand.Rand, data []byte) {
-
-	const sizeOfUint32 = 4
-
-	quo, rem := quoRem(len(data), sizeOfUint32)
-
-	if quo > 0 {
-		bo := binary.BigEndian
-		for i := 0; i < quo; i++ {
-			bo.PutUint32(data, r.Uint32())
-			data = data[sizeOfUint32:]
-		}
-	}
-
-	if rem > 0 {
-		u := r.Uint32()
-		for i := 0; i < rem; i++ {
-			data[i] = byte(u)
-			u >>= 8
 		}
 	}
 }

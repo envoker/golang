@@ -4,12 +4,14 @@ import (
 	"bytes"
 	"errors"
 	"testing"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 func blackBoxTest(count int, a, b Value) (err error) {
 
 	var n int
-	r := newRand()
+	r := random.NewRand()
 
 	for i := 0; i < count; i++ {
 

@@ -3,7 +3,7 @@ package der
 import (
 	"testing"
 
-	"github.com/gitchander/goco/hex"
+	"github.com/envoker/golang/encoding/hex"
 )
 
 func TestIntegerSetGet(t *testing.T) {

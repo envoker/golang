@@ -44,6 +44,6 @@ func procLogTest(wg *sync.WaitGroup, id int, logger *clog.Logger) {
 	r := rand.New(rand.NewSource(int64(id)))
 	for i := 0; i < 500; i++ {
 		level = clog.Level(1 + r.Intn(6))
-		logger.Log(level, "thread: %03d | %s", id, RandomString(r))
+		logger.Log(level, "thread: %03d | %s", id, randString(r))
 	}
 }

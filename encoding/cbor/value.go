@@ -1,5 +1,9 @@
 package cbor
 
+import (
+	"math/rand"
+)
+
 type Equaler interface {
 	Equal(e Equaler) bool
 }
@@ -11,6 +15,10 @@ type Encoder interface {
 
 type Decoder interface {
 	Decode(p []byte) (size int, err error)
+}
+
+type randomer interface {
+	random(r *rand.Rand) error
 }
 
 type Value interface {

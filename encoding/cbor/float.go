@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"math"
 	"math/rand"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 type Float32 float32
@@ -77,7 +79,7 @@ func (this *Float32) Equal(e Equaler) bool {
 func (this *Float32) random(r *rand.Rand) error {
 
 	f := r.Float64() * math.MaxFloat32
-	if randBool(r) {
+	if random.Bool(r) {
 		f = -f
 	}
 
@@ -153,7 +155,7 @@ func (this *Float64) Equal(e Equaler) bool {
 func (this *Float64) random(r *rand.Rand) error {
 
 	f := r.Float64() * math.MaxFloat64
-	if randBool(r) {
+	if random.Bool(r) {
 		f = -f
 	}
 

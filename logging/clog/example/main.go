@@ -9,6 +9,7 @@ import (
 
 func main() {
 
+	//logTest()
 	LogJsonConvertTest()
 }
 

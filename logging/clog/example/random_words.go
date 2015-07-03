@@ -3,6 +3,8 @@ package main
 import (
 	"bytes"
 	"math/rand"
+	
+	"github.com/envoker/golang/testing/random"
 )
 
 var randomWordTable = []string{
@@ -19,18 +21,13 @@ var randomWordTable = []string{
 	"успокоиться",
 }
 
-func RandomRange(r *rand.Rand, min int, max int) int {
-	return (min + r.Intn(max-min+1))
-}
-
-func RandomString(r *rand.Rand) string {
+func randString(r *rand.Rand) string {
 
 	var buffer *bytes.Buffer
 	buffer = new(bytes.Buffer)
 
-	minLen := 2
-	maxLen := 5
-	countWords := RandomRange(r, minLen, maxLen)
+	maxLen := 5	
+	countWords := random.Intn(r, maxLen)
 
 	for i := 0; i < countWords; i++ {
 

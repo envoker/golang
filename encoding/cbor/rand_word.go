@@ -2,6 +2,8 @@ package cbor
 
 import (
 	"math/rand"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 type alphabet struct {
@@ -39,7 +41,7 @@ func randAbcWord(r *rand.Rand, abc *alphabet) string {
 
 	for i := range rs {
 
-		if randBool(r) {
+		if random.Bool(r) {
 			rs[i] = lower[r.Intn(len(lower))]
 		} else {
 			rs[i] = upper[r.Intn(len(upper))]

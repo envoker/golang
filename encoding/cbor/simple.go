@@ -2,6 +2,8 @@ package cbor
 
 import (
 	"math/rand"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 type Boolean bool
@@ -75,7 +77,7 @@ func (this *Boolean) Equal(e Equaler) bool {
 
 func (this *Boolean) random(r *rand.Rand) error {
 
-	*this = Boolean(randBool(r))
+	*this = Boolean(random.Bool(r))
 
 	return nil
 }

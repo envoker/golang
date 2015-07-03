@@ -3,6 +3,8 @@ package cbor
 import (
 	"math"
 	"math/rand"
+
+	"github.com/envoker/golang/testing/random"
 )
 
 type Number struct {
@@ -197,7 +199,7 @@ func (this *Number) Equal(e Equaler) bool {
 
 func (this *Number) random(r *rand.Rand) error {
 
-	this.negative = randBool(r)
+	this.negative = random.Bool(r)
 
 	switch p := r.Intn(5); p {
 
