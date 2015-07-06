@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
-	"math/rand"
-	"time"
+	"reflect"
 
 	"github.com/envoker/golang/encoding/chab"
+	"github.com/envoker/golang/testing/random"
 )
 
 type Location struct {
@@ -19,13 +19,73 @@ type User struct {
 	Loc   Location
 }
 
+type Cooker struct {
+	Name string
+	age  int
+	Pos  Location
+}
+
 func main() {
 
-	if err := intTest(); err != nil {
+	if err := testStruct(); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
 	fmt.Println("ok")
+}
+
+func publicNumField(v reflect.Value) int {
+
+	if v.Kind() != reflect.Struct {
+		return 0
+	}
+
+	var (
+		count = 0
+		n     = v.Type().NumField()
+	)
+
+	for i := 0; i < n; i++ {
+		if vField := v.Field(i); vField.CanInterface() {
+			count++
+		}
+	}
+
+	return count
+}
+
+func testStruct() error {
+
+	var c = Cooker{
+		Name: "Laster",
+		age:  33,
+		Pos:  Location{13.17, 08.14},
+	}
+
+	v := reflect.ValueOf(c)
+
+	fmt.Println(">>", publicNumField(v))
+
+	t := v.Type()
+	n := t.NumField()
+
+	for i := 0; i < n; i++ {
+
+		vField := v.Field(i)
+
+		fmt.Println(vField.CanInterface())
+
+		sf := t.Field(i)
+
+		fmt.Printf("field(%d): %s\n", i, sf.Name)
+
+		fmt.Println(vField.CanSet())
+		fmt.Println(vField)
+
+		fmt.Println()
+	}
+
+	return nil
 }
 
 func Test() error {
@@ -62,20 +122,16 @@ func Test() error {
 	return nil
 }
 
-func newRand() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
 func intTest() error {
 
 	var a, b int16
 	var err error
 
-	r := newRand()
+	r := random.NewRand()
 
 	for i := 0; i < 10000; i++ {
 
-		a = int16(r.Intn(65536))
+		a = int16(random.Intn(r, 65536))
 
 		if err = encDec(&a, &b); err != nil {
 			return err

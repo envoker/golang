@@ -5,12 +5,12 @@ import (
 	"fmt"
 )
 
-func newError(m string) error {
-	return errors.New(fmt.Sprintf("chab: %s", m))
+func newError(a ...interface{}) error {
+	return errors.New("chab: " + fmt.Sprint(a...))
 }
 
 func newErrorf(format string, a ...interface{}) error {
-	return newError(fmt.Sprintf(format, a...))
+	return errors.New("chab: " + fmt.Sprintf(format, a...))
 }
 
 var (

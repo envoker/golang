@@ -1,7 +1,6 @@
 package chab
 
 import (
-	"math"
 	"reflect"
 )
 
@@ -20,19 +19,13 @@ func NewEncoder(w BufferWriter) *Encoder {
 	return &Encoder{w}
 }
 
-func (e *Encoder) Encode(val interface{}) error {
+func (e *Encoder) Encode(v interface{}) error {
+	return e.EncodeValue(reflect.ValueOf(v))
+}
 
-	var v = reflect.ValueOf(val)
-
-	t := v.Type()
-	encodeFn := baseEncode(t)
-
-	err := encodeFn(e.w, v)
-	if err != nil {
-		return err
-	}
-
-	return nil
+func (e *Encoder) EncodeValue(v reflect.Value) error {
+	encodeFn := baseEncode(v.Type())
+	return encodeFn(e.w, v)
 }
 
 func baseEncode(t reflect.Type) encodeFunc {
@@ -64,11 +57,11 @@ func baseEncode(t reflect.Type) encodeFunc {
 	case reflect.Struct:
 		return structEncode
 
-	case reflect.Array:
-		return newArrayEncode(t)
-
 	case reflect.Ptr:
 		return newPtrEncode(t)
+
+	case reflect.Array:
+		return newArrayEncode(t)
 
 	case reflect.Slice:
 		return newSliceEncode(t)
@@ -80,22 +73,18 @@ func baseEncode(t reflect.Type) encodeFunc {
 func marshalerEncode(w BufferWriter, v reflect.Value) error {
 
 	if (v.Kind() == reflect.Ptr) && v.IsNil() {
-		return nullEncoder(w, v)
+		return nullEncode(w, v)
 	}
 
-	e := NewEncoder(w)
+	var (
+		e = NewEncoder(w)
+		m = v.Interface().(Marshaler)
+	)
 
-	m := v.Interface().(Marshaler)
-
-	err := m.MarshalCHAB(e)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return m.MarshalCHAB(e)
 }
 
-func nullEncoder(w BufferWriter, v reflect.Value) error {
+func nullEncode(w BufferWriter, v reflect.Value) error {
 
 	var addInfo byte = 0
 
@@ -135,42 +124,12 @@ func uintEncode(w BufferWriter, v reflect.Value) error {
 
 func float32Encode(w BufferWriter, v reflect.Value) error {
 
-	addInfo := byte(sizeOfUint32)
-	if err := writeTag(w, gtFloat, addInfo); err != nil {
-		return err
-	}
-
-	var bs [sizeOfUint32]byte
-	data := bs[:]
-
-	u := math.Float32bits(float32(v.Float()))
-	byteOrder.PutUint32(data, u)
-
-	if _, err := writeFull(w, data); err != nil {
-		return err
-	}
-
-	return nil
+	return encodeTagFloat32(w, float32(v.Float()))
 }
 
 func float64Encode(w BufferWriter, v reflect.Value) error {
 
-	addInfo := byte(sizeOfUint64)
-	if err := writeTag(w, gtFloat, addInfo); err != nil {
-		return err
-	}
-
-	var bs [sizeOfUint64]byte
-	data := bs[:]
-
-	u := math.Float64bits(v.Float())
-	byteOrder.PutUint64(data, u)
-
-	if _, err := writeFull(w, data); err != nil {
-		return err
-	}
-
-	return nil
+	return encodeTagFloat64(w, v.Float())
 }
 
 func bytesEncode(w BufferWriter, v reflect.Value) error {
@@ -178,16 +137,11 @@ func bytesEncode(w BufferWriter, v reflect.Value) error {
 	data := v.Bytes()
 	u := uint64(len(data))
 
-	err := encodeTagUint(w, gtBytes, u)
-	if err != nil {
+	if err := encodeTagUint(w, gtBytes, u); err != nil {
 		return err
 	}
 
-	if _, err := writeFull(w, data); err != nil {
-		return err
-	}
-
-	return nil
+	return writeFull(w, data)
 }
 
 func stringEncode(w BufferWriter, v reflect.Value) error {
@@ -195,19 +149,13 @@ func stringEncode(w BufferWriter, v reflect.Value) error {
 	data := []byte(v.String())
 	u := uint64(len(data))
 
-	err := encodeTagUint(w, gtString, u)
-	if err != nil {
+	if err := encodeTagUint(w, gtString, u); err != nil {
 		return err
 	}
 
-	if _, err := writeFull(w, data); err != nil {
-		return err
-	}
-
-	return nil
+	return writeFull(w, data)
 }
 
-//----------------------------------------------------------------------------
 type arrayEncoder struct {
 	encodeFn encodeFunc
 }
@@ -236,7 +184,6 @@ func (e *arrayEncoder) encode(w BufferWriter, v reflect.Value) error {
 	return nil
 }
 
-//----------------------------------------------------------------------------
 func newSliceEncode(t reflect.Type) encodeFunc {
 
 	if t.Elem().Kind() == reflect.Uint8 {
@@ -246,7 +193,6 @@ func newSliceEncode(t reflect.Type) encodeFunc {
 	return newArrayEncode(t)
 }
 
-//----------------------------------------------------------------------------
 type ptrEncoder struct {
 	encodeFn encodeFunc
 }
@@ -260,19 +206,18 @@ func newPtrEncode(t reflect.Type) encodeFunc {
 func (p *ptrEncoder) encode(w BufferWriter, v reflect.Value) error {
 
 	if (v.Kind() == reflect.Ptr) && v.IsNil() {
-		return nullEncoder(w, v)
+		return nullEncode(w, v)
 	}
 
 	return p.encodeFn(w, v.Elem())
 }
 
-//----------------------------------------------------------------------------
 func structEncode(w BufferWriter, v reflect.Value) error {
 
 	t := v.Type()
 	n := t.NumField()
 
-	err := encodeTagUint(w, gtMap, uint64(n))
+	err := encodeTagUint(w, gtMap, uint64(t.NumField()))
 	if err != nil {
 		return err
 	}
@@ -281,6 +226,11 @@ func structEncode(w BufferWriter, v reflect.Value) error {
 	vName := reflect.ValueOf(&name).Elem()
 
 	for i := 0; i < n; i++ {
+
+		vField := v.Field(i)
+		if !vField.CanInterface() {
+			continue
+		}
 
 		// Key
 		{
@@ -294,10 +244,8 @@ func structEncode(w BufferWriter, v reflect.Value) error {
 
 		// Value
 		{
-			valueField := v.Field(i)
-
-			encodeFn := baseEncode(valueField.Type())
-			if err = encodeFn(w, valueField); err != nil {
+			encodeFn := baseEncode(vField.Type())
+			if err = encodeFn(w, vField); err != nil {
 				return err
 			}
 		}

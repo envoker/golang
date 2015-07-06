@@ -25,24 +25,22 @@ func encDec(a, b interface{}) error {
 
 func TestBoolEncDec(t *testing.T) {
 
-	var (
-		a, b bool
-		err  error
-	)
+	var a, b bool
 
-	var vs = []bool{false, true}
+	r := random.NewRand()
 
-	for _, v := range vs {
+	for i := 0; i < 100; i++ {
 
-		a = v
+		a = random.Bool(r)
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
 
 		if a != b {
-			t.Errorf("%d != %d", a, b)
+			t.Errorf("iteration: %d", i)
 			return
 		}
 	}
@@ -50,10 +48,7 @@ func TestBoolEncDec(t *testing.T) {
 
 func TestInt16EncDec(t *testing.T) {
 
-	var (
-		a, b int16
-		err  error
-	)
+	var a, b int16
 
 	r := random.NewRand()
 
@@ -61,13 +56,14 @@ func TestInt16EncDec(t *testing.T) {
 
 		a = random.Int16(r)
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
 
 		if a != b {
-			t.Errorf("%d != %d", a, b)
+			t.Errorf("iteration: %d", i)
 			return
 		}
 	}
@@ -75,10 +71,7 @@ func TestInt16EncDec(t *testing.T) {
 
 func TestInt32EncDec(t *testing.T) {
 
-	var (
-		a, b int32
-		err  error
-	)
+	var a, b int32
 
 	r := random.NewRand()
 
@@ -86,13 +79,14 @@ func TestInt32EncDec(t *testing.T) {
 
 		a = random.Int32(r)
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
 
 		if a != b {
-			t.Errorf("%d != %d", a, b)
+			t.Errorf("iteration: %d", i)
 			return
 		}
 	}
@@ -100,10 +94,7 @@ func TestInt32EncDec(t *testing.T) {
 
 func TestUint64EncDec(t *testing.T) {
 
-	var (
-		a, b uint64
-		err  error
-	)
+	var a, b uint64
 
 	r := random.NewRand()
 
@@ -111,13 +102,14 @@ func TestUint64EncDec(t *testing.T) {
 
 		a = random.Uint64(r)
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
 
 		if a != b {
-			t.Errorf("%d != %d", a, b)
+			t.Errorf("iteration: %d", i)
 			return
 		}
 	}
@@ -125,10 +117,7 @@ func TestUint64EncDec(t *testing.T) {
 
 func TestBytesEncDec(t *testing.T) {
 
-	var (
-		a, b []byte
-		err  error
-	)
+	var a, b []byte
 
 	r := random.NewRand()
 
@@ -136,13 +125,14 @@ func TestBytesEncDec(t *testing.T) {
 
 		a = random.Bytes(r, 32000)
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
 
 		if bytes.Compare(a, b) != 0 {
-			t.Errorf("bytes not compare; iteration: %d\n", i)
+			t.Errorf("iteration: %d", i)
 			return
 		}
 	}
@@ -150,10 +140,7 @@ func TestBytesEncDec(t *testing.T) {
 
 func TestStringEncDec(t *testing.T) {
 
-	var (
-		a, b string
-		err  error
-	)
+	var a, b string
 
 	r := random.NewRand()
 
@@ -161,13 +148,14 @@ func TestStringEncDec(t *testing.T) {
 
 		a = random.String(r, 1000)
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
 
 		if a != b {
-			t.Errorf("strings not equal; iteration: %d\n", i)
+			t.Errorf("iteration: %d", i)
 			return
 		}
 	}
@@ -177,10 +165,7 @@ func TestFloat32EncDec(t *testing.T) {
 
 	const lambda = 0.00001
 
-	var (
-		a, b float32
-		err  error
-	)
+	var a, b float32
 
 	var (
 		min float32 = math.MaxFloat32
@@ -202,7 +187,8 @@ func TestFloat32EncDec(t *testing.T) {
 			max = a
 		}
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}
@@ -221,10 +207,7 @@ func TestFloat64EncDec(t *testing.T) {
 
 	const lambda = 0.00001
 
-	var (
-		a, b float64
-		err  error
-	)
+	var a, b float64
 
 	var (
 		min float64 = math.MaxFloat64
@@ -246,7 +229,8 @@ func TestFloat64EncDec(t *testing.T) {
 			max = a
 		}
 
-		if err = encDec(&a, &b); err != nil {
+		err := encDec(&a, &b)
+		if err != nil {
 			t.Error(err)
 			return
 		}

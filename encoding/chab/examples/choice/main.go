@@ -1,12 +1,9 @@
 package main
 
 import (
-	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"math"
-	"math/rand"
 
 	"github.com/envoker/golang/encoding/chab"
 	"github.com/envoker/golang/testing/random"
@@ -20,66 +17,16 @@ func main() {
 	}
 }
 
-func expFloat64(r *rand.Rand) float64 {
-
-	return -math.Log(1 - r.Float64())
-}
-
-func mrand() error {
-
-	// y= 1 - exp(-lambda*x)
-	// x= -ln(1-y) / lambda
-
-	var f = func(x float64, lambda float64) float64 {
-
-		return -math.Log(1 - x)
-	}
-
-	fmt.Println(f(0.0000000000000001, 10))
-
-	var lambda float64 = 0.000001
-	r := random.NewRand()
-
-	var min float64 = math.MaxFloat64
-	var max float64 = 0
-
-	for i := 0; i < 10000000; i++ {
-
-		//q := r.ExpFloat64() / lambda
-		q := expFloat64(r) / lambda
-
-		if min > q {
-			min = q
-		}
-
-		if max < q {
-			max = q
-		}
-	}
-
-	fmt.Println("min:", min)
-	fmt.Println("max:", max)
-
-	return nil
-}
-
 func testBool() error {
 
-	var a = false
-
-	data, err := chab.Marshal(a)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("% x\n", data)
-
+	var a bool = true
 	var b bool
 
-	if err = chab.Unmarshal(data, &b); err != nil {
+	if err := encDec(a, &b); err != nil {
 		return err
 	}
 
+	fmt.Println(a)
 	fmt.Println(b)
 
 	return nil
@@ -112,20 +59,14 @@ func testInt() error {
 
 	var a, b int
 
-	//a= math.MaxInt32
-	a = math.MinInt32
+	a = math.MaxInt32
+	//a = math.MinInt32
 
-	data, err := chab.Marshal(&a)
-	if err != nil {
+	if err := encDec(&a, &b); err != nil {
 		return err
 	}
 
-	fmt.Printf("% x\n", data)
-
-	if err = chab.Unmarshal(data, &b); err != nil {
-		return err
-	}
-
+	fmt.Println(a)
 	fmt.Println(b)
 
 	return nil
@@ -156,102 +97,57 @@ func testFloat() error {
 
 func jsonTest() error {
 
-	a := &Actor{
-		Name:   "Scater",
-		Figure: NewFigure(&Point{3, 8}),
+	a := []*Point{
+		&Point{3, -17},
+		&Point{456, 9012},
+		&Point{0, -1},
+		&Point{777, 454535343},
 	}
 
-	data, err := json.Marshal(a)
+	fmt.Println(a)
+
+	data, err := json.Marshal(&a)
 	if err != nil {
 		return err
 	}
 
-	fmt.Println(string(data))
+	fmt.Printf("% x\n", data)
 
-	b := new(Actor)
+	var b []*Point
 
-	err = json.Unmarshal(data, b)
+	err = json.Unmarshal(data, &b)
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("%#v\n", b)
+	fmt.Println(b)
 
 	return nil
 }
 
-/*
-
-81 03
-	61 03 50 6f 73 // Pos
-		81 02
-			61 01 58
-				21 07
-			61 01 59
-				21 f3
-
-	61 04 4e 61 6d 65 // Name
-		61 00
-
-	61 06 46 69 67 75 72 65 // Figure
-		00
-
-//------------------------
-
-81 03
-	61 03 50 6f 73
-		00
-
-	61 04 4e 61 6d 65
-		61 00
-
-	61 06 46 69 67 75 72 65
-		00
-
-*/
-
 func testActor() error {
 
 	var a = Actor{
-		//Pos: &Point{7, -13},
+		Pos: Point{7, -13},
 		Figure: NewFigure(
 			&Circle{
-				Center: Point{-3, -1},
-				Radius: -170.47002,
+				Center: Point{-358, 1890321},
+				Radius: -1.7047002e+20,
 			},
 		),
 	}
 
-	a_data, err := chab.Marshal(&a)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("% x\n", a_data)
-
 	var b Actor
 
-	b.Figure = NewFigure(
-		&Circle{
-			Center: Point{-3, -1},
-			Radius: -170.47002,
-		},
-	)
-
-	err = chab.Unmarshal(a_data, &b)
-	if err != nil {
+	if err := encDec(&a, &b); err != nil {
 		return err
 	}
 
-	b_data, err := chab.Marshal(&b)
-	if err != nil {
-		return err
-	}
+	fmt.Println(a)
+	fmt.Println(b)
 
-	fmt.Printf("% x\n", b_data)
-
-	if bytes.Compare(a_data, b_data) != 0 {
-		return errors.New("bytes not equal")
+	if b.Figure != nil {
+		fmt.Printf("Figure: %+v\n", b.Figure.Value())
 	}
 
 	return nil
@@ -301,6 +197,98 @@ func testChoice() error {
 	}
 
 	fmt.Printf("%#v\n", c2.Value())
+
+	return nil
+}
+
+func testIntArray() error {
+
+	r := random.NewRand()
+
+	a := make([]int, 5)
+	for i := range a {
+		a[i] = int(random.Int32(r))
+	}
+
+	fmt.Println(a)
+
+	data, err := chab.Marshal(&a)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("% x\n", data)
+
+	var b []int
+
+	err = chab.Unmarshal(data, &b)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(b)
+
+	return nil
+}
+
+func testPointSlice() error {
+
+	a := []Circle{
+		Circle{
+			Center: Point{-7, 13},
+			Radius: -1.001,
+		},
+		Circle{
+			Center: Point{5, 1},
+			Radius: -21311.2300,
+		},
+		Circle{
+			Center: Point{3, -12},
+			Radius: 8.9678e-3,
+		},
+	}
+
+	var b []Circle
+
+	if err := encDec(&a, &b); err != nil {
+		return err
+	}
+
+	fmt.Println(a)
+	fmt.Println(b)
+
+	return nil
+}
+
+func testPoint() error {
+
+	a := Point{-7, 13}
+
+	var b Point
+
+	if err := encDec(&a, &b); err != nil {
+		return err
+	}
+
+	fmt.Println(a)
+	fmt.Println(b)
+
+	return nil
+}
+
+func encDec(a, b interface{}) error {
+
+	data, err := chab.Marshal(a)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("% x\n", data)
+
+	err = chab.Unmarshal(data, b)
+	if err != nil {
+		return err
+	}
 
 	return nil
 }

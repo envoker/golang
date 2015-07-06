@@ -118,7 +118,7 @@ type Size struct {
 }
 
 type Actor struct {
-	Pos    *Point
+	Pos    Point
 	Name   string
 	Figure *Figure
 }
