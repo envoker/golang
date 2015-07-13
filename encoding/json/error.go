@@ -5,7 +5,11 @@ import (
 	"fmt"
 )
 
-func newError(format string, a ...interface{}) error {
+func newError(a ...interface{}) error {
+	return errors.New("cjson: " + fmt.Sprint(a...))
+}
+
+func newErrorf(format string, a ...interface{}) error {
 	return errors.New("cjson: " + fmt.Sprintf(format, a...))
 }
 
