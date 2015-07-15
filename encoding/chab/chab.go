@@ -21,7 +21,7 @@ var (
 func Marshal(val interface{}) ([]byte, error) {
 
 	var (
-		w = new(bytes.Buffer)
+		w = bytes.NewBuffer(nil)
 		e = NewEncoder(w)
 	)
 

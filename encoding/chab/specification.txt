@@ -19,9 +19,9 @@ Types:
 	Bytes 		(5) - represents a byte array
 	String 		(6) - represents a UTF-8 string
 	Array 		(7) - represents a sequence of objects
-	Map 		(8) - represents key-value pairs of objects
-	Extended	(9) - represents a tuple of type information and object
-	Stop		(10) - represents a stop for Array and Map with unknown length
+	Map			(8) - represents key-value pairs of objects
+	Extended		(9) - represents a tuple of type information and object
+	Stop			(10) - represents a stop for Array and Map with unknown length
 
 
 //-----------------------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -289,6 +290,59 @@ func encDec(a, b interface{}) error {
 	if err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func testBuffer() error {
+
+	buffer := new(bytes.Buffer)
+
+	e := chab.NewEncoder(buffer)
+
+	var (
+		a1 = Circle{
+			Center: Point{-7, 13},
+			Radius: -1.001,
+		}
+
+		b1 = true
+		c1 = 12.6784
+	)
+
+	var err error
+
+	if err = e.Encode(a1); err != nil {
+		return err
+	}
+	if err = e.Encode(b1); err != nil {
+		return err
+	}
+	if err = e.Encode(c1); err != nil {
+		return err
+	}
+
+	var (
+		a2 Circle
+		b2 bool
+		c2 float64
+	)
+
+	d := chab.NewDecoder(buffer)
+
+	if err = d.Decode(&a2); err != nil {
+		return err
+	}
+	if err = d.Decode(&b2); err != nil {
+		return err
+	}
+	if err = d.Decode(&c2); err != nil {
+		return err
+	}
+
+	fmt.Println(a2)
+	fmt.Println(b2)
+	fmt.Println(c2)
 
 	return nil
 }

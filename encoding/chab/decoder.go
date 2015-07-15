@@ -1,24 +1,18 @@
 package chab
 
 import (
+	"io"
 	"math"
 	"reflect"
+	"unicode/utf8"
 )
 
-type BufferReader interface {
-	Read(p []byte) (n int, err error)
-	ReadByte() (c byte, err error)
-	UnreadByte() error
-}
-
 type Decoder struct {
-	r BufferReader
+	dB *decodeBuffer
 }
 
-type decodeFunc func(BufferReader, reflect.Value) error
-
-func NewDecoder(r BufferReader) *Decoder {
-	return &Decoder{r}
+func NewDecoder(r io.Reader) *Decoder {
+	return &Decoder{newDecodeBuffer(r)}
 }
 
 func (d *Decoder) Decode(v interface{}) error {
@@ -32,8 +26,10 @@ func (d *Decoder) DecodeValue(v reflect.Value) error {
 	}
 
 	decodeFn := baseDecode(v.Type())
-	return decodeFn(d.r, v)
+	return decodeFn(d.dB, v)
 }
+
+type decodeFunc func(*decodeBuffer, reflect.Value) error
 
 func baseDecode(t reflect.Type) decodeFunc {
 
@@ -77,19 +73,19 @@ func baseDecode(t reflect.Type) decodeFunc {
 	return nil
 }
 
-func unmarshalerDecode(r BufferReader, v reflect.Value) error {
+func unmarshalerDecode(dB *decodeBuffer, v reflect.Value) error {
 
 	var (
-		d = NewDecoder(r)
+		d = &Decoder{dB}
 		u = v.Interface().(Unmarshaler)
 	)
 
 	return u.UnmarshalCHAB(d)
 }
 
-func boolDecode(r BufferReader, v reflect.Value) error {
+func boolDecode(dB *decodeBuffer, v reflect.Value) error {
 
-	addInfo, err := readTag(r, gtBool)
+	addInfo, err := dB.checkTag(gtBool)
 	if err != nil {
 		return err
 	}
@@ -106,9 +102,9 @@ func boolDecode(r BufferReader, v reflect.Value) error {
 	return nil
 }
 
-func intDecode(r BufferReader, v reflect.Value) error {
+func intDecode(dB *decodeBuffer, v reflect.Value) error {
 
-	i, err := decodeTagInt(r, gtSigned)
+	i, err := dB.readTagInt(gtSigned)
 	if err != nil {
 		return err
 	}
@@ -146,9 +142,9 @@ func intDecode(r BufferReader, v reflect.Value) error {
 	return nil
 }
 
-func uintDecode(r BufferReader, v reflect.Value) error {
+func uintDecode(dB *decodeBuffer, v reflect.Value) error {
 
-	u, err := decodeTagUint(r, gtUnsigned)
+	u, err := dB.readTagUint(gtUnsigned)
 	if err != nil {
 		return err
 	}
@@ -186,9 +182,9 @@ func uintDecode(r BufferReader, v reflect.Value) error {
 	return nil
 }
 
-func float32Decode(r BufferReader, v reflect.Value) error {
+func float32Decode(dB *decodeBuffer, v reflect.Value) error {
 
-	f, err := decodeTagFloat32(r)
+	f, err := dB.readTagFloat32()
 	if err != nil {
 		return err
 	}
@@ -198,9 +194,9 @@ func float32Decode(r BufferReader, v reflect.Value) error {
 	return nil
 }
 
-func float64Decode(r BufferReader, v reflect.Value) error {
+func float64Decode(dB *decodeBuffer, v reflect.Value) error {
 
-	f, err := decodeTagFloat64(r)
+	f, err := dB.readTagFloat64()
 	if err != nil {
 		return err
 	}
@@ -210,9 +206,9 @@ func float64Decode(r BufferReader, v reflect.Value) error {
 	return nil
 }
 
-func bytesDecode(r BufferReader, v reflect.Value) error {
+func bytesDecode(dB *decodeBuffer, v reflect.Value) error {
 
-	u, err := decodeTagUint(r, gtBytes)
+	u, err := dB.readTagUint(gtBytes)
 	if err != nil {
 		return err
 	}
@@ -222,7 +218,7 @@ func bytesDecode(r BufferReader, v reflect.Value) error {
 	}
 
 	data := make([]byte, u)
-	if err = readFull(r, data); err != nil {
+	if err = dB.readFull(data); err != nil {
 		return err
 	}
 
@@ -231,9 +227,9 @@ func bytesDecode(r BufferReader, v reflect.Value) error {
 	return nil
 }
 
-func stringDecode(r BufferReader, v reflect.Value) error {
+func stringDecode(dB *decodeBuffer, v reflect.Value) error {
 
-	u, err := decodeTagUint(r, gtString)
+	u, err := dB.readTagUint(gtString)
 	if err != nil {
 		return err
 	}
@@ -243,8 +239,12 @@ func stringDecode(r BufferReader, v reflect.Value) error {
 	}
 
 	data := make([]byte, u)
-	if err = readFull(r, data); err != nil {
+	if err = dB.readFull(data); err != nil {
 		return err
+	}
+
+	if !utf8.Valid(data) {
+		return newError("stringDecode: data is not utf-8 string")
 	}
 
 	v.SetString(string(data))
@@ -263,9 +263,9 @@ func newArrayDecode(t reflect.Type) decodeFunc {
 	return d.decode
 }
 
-func (d *arrayDecoder) decode(r BufferReader, v reflect.Value) error {
+func (d *arrayDecoder) decode(dB *decodeBuffer, v reflect.Value) error {
 
-	u, err := decodeTagUint(r, gtArray)
+	u, err := dB.readTagUint(gtArray)
 	if err != nil {
 		return err
 	}
@@ -278,7 +278,7 @@ func (d *arrayDecoder) decode(r BufferReader, v reflect.Value) error {
 	slice := reflect.MakeSlice(d.t, n, n)
 
 	for i := 0; i < n; i++ {
-		if err = valueDecode(r, slice.Index(i)); err != nil {
+		if err = valueDecode(dB, slice.Index(i)); err != nil {
 			return err
 		}
 	}
@@ -307,9 +307,9 @@ func newPtrDecode(t reflect.Type) decodeFunc {
 	return d.decode
 }
 
-func (p *ptrDecoder) decode(r BufferReader, v reflect.Value) error {
+func (p *ptrDecoder) decode(dB *decodeBuffer, v reflect.Value) error {
 
-	return valueDecode(r, v.Elem())
+	return valueDecode(dB, v.Elem())
 
 	/*
 		if v.Kind() == reflect.Ptr {
@@ -326,10 +326,10 @@ func (p *ptrDecoder) decode(r BufferReader, v reflect.Value) error {
 	*/
 }
 
-func valueDecode(r BufferReader, v reflect.Value) error {
+func valueDecode(dB *decodeBuffer, v reflect.Value) error {
 
 	if v.Kind() == reflect.Ptr {
-		if _, err := readTag(r, gtNull); err == nil {
+		if _, err := dB.checkTag(gtNull); err == nil {
 			valueSetZero(v)
 			return nil
 		}
@@ -338,12 +338,12 @@ func valueDecode(r BufferReader, v reflect.Value) error {
 
 	decodeFn := baseDecode(v.Type())
 
-	return decodeFn(r, v)
+	return decodeFn(dB, v)
 }
 
-func structDecode(r BufferReader, v reflect.Value) error {
+func structDecode(dB *decodeBuffer, v reflect.Value) error {
 
-	u, err := decodeTagUint(r, gtMap)
+	u, err := dB.readTagUint(gtMap)
 	if err != nil {
 		return err
 	}
@@ -363,7 +363,7 @@ func structDecode(r BufferReader, v reflect.Value) error {
 
 		// Key
 		{
-			if err = stringDecode(r, vName); err != nil {
+			if err = stringDecode(dB, vName); err != nil {
 				return err
 			}
 
@@ -374,7 +374,7 @@ func structDecode(r BufferReader, v reflect.Value) error {
 		}
 
 		// Value
-		if err = valueDecode(r, vField); err != nil {
+		if err = valueDecode(dB, vField); err != nil {
 			return err
 		}
 	}

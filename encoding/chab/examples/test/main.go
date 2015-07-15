@@ -27,11 +27,25 @@ type Cooker struct {
 
 func main() {
 
-	if err := testStruct(); err != nil {
+	if err := test112(); err != nil {
 		fmt.Println(err.Error())
 		return
 	}
-	fmt.Println("ok")
+	//fmt.Println("ok")
+}
+
+func test112() error {
+
+	var a float64 = -1.8798655108782347289054e-234
+
+	data, err := chab.Marshal(a)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("% x\n", data)
+
+	return nil
 }
 
 func publicNumField(v reflect.Value) int {

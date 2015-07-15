@@ -2,7 +2,6 @@ package chab
 
 import (
 	"bytes"
-	"math"
 	"testing"
 
 	"github.com/envoker/golang/testing/random"
@@ -167,25 +166,12 @@ func TestFloat32EncDec(t *testing.T) {
 
 	var a, b float32
 
-	var (
-		min float32 = math.MaxFloat32
-		max float32 = 0
-	)
-
 	r := random.NewRand()
 
 	for i := 0; i < 100000; i++ {
 
 		//a = float32(r.ExpFloat64() / lambda)
 		a = float32(random.ExpFloat64(r) / lambda)
-
-		if min > a {
-			min = a
-		}
-
-		if max < a {
-			max = a
-		}
 
 		err := encDec(&a, &b)
 		if err != nil {
@@ -198,9 +184,6 @@ func TestFloat32EncDec(t *testing.T) {
 			return
 		}
 	}
-
-	t.Log("min:", min)
-	t.Log("max:", max)
 }
 
 func TestFloat64EncDec(t *testing.T) {
@@ -209,25 +192,12 @@ func TestFloat64EncDec(t *testing.T) {
 
 	var a, b float64
 
-	var (
-		min float64 = math.MaxFloat64
-		max float64 = 0
-	)
-
 	r := random.NewRand()
 
 	for i := 0; i < 100000; i++ {
 
 		a = r.ExpFloat64() / lambda
 		//a = random.ExpFloat64(r) / lambda
-
-		if min > a {
-			min = a
-		}
-
-		if max < a {
-			max = a
-		}
 
 		err := encDec(&a, &b)
 		if err != nil {
@@ -240,17 +210,4 @@ func TestFloat64EncDec(t *testing.T) {
 			return
 		}
 	}
-
-	t.Log("min:", min)
-	t.Log("max:", max)
 }
-
-/*
-func TestString(t *testing.T) {
-
-	r:= random.NewRand()
-	for i:= 0; i < 100; i++ {
-		t.Log(random.String(r, 100))
-	}
-}
-*/

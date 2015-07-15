@@ -17,7 +17,7 @@ func ExtEncode(e *Encoder, v ExtValue) error {
 		return err
 	}
 
-	if err = encodeTagInt(e.w, gtExtended, int64(t)); err != nil {
+	if err = e.eB.writeTagInt(gtExtended, int64(t)); err != nil {
 		return err
 	}
 
@@ -30,7 +30,7 @@ func ExtEncode(e *Encoder, v ExtValue) error {
 
 func ExtDecode(d *Decoder, v ExtValue) error {
 
-	i, err := decodeTagInt(d.r, gtExtended)
+	i, err := d.dB.readTagInt(gtExtended)
 	if err != nil {
 		return err
 	}
