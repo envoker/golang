@@ -20,17 +20,17 @@ type Logger interface {
 }
 
 type recordsLogger struct {
-	records chan<- *logRecord
+	p *Log
 }
 
 func (l *recordsLogger) Log(level Level, a ...interface{}) {
 
-	l.records <- &logRecord{level, fmt.Sprint(a...)}
+	l.p.addRecord(logRecord{level, fmt.Sprint(a...)})
 }
 
 func (l *recordsLogger) Logf(level Level, format string, a ...interface{}) {
 
-	l.records <- &logRecord{level, fmt.Sprintf(format, a...)}
+	l.p.addRecord(logRecord{level, fmt.Sprintf(format, a...)})
 }
 
 func (l *recordsLogger) Error(a ...interface{}) {

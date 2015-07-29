@@ -41,9 +41,22 @@ func New(dirname string, level Level) (*Log, error) {
 func (l *Log) Close() error {
 
 	l.writeStopper.Stop()
+
+	if l.records != nil {
+		close(l.records)
+		l.records = nil
+	}
+
 	return nil
 }
 
 func (l *Log) Logger() Logger {
-	return &recordsLogger{l.records}
+	return &recordsLogger{l}
+}
+
+func (l *Log) addRecord(record logRecord) {
+
+	if l.records != nil {
+		l.records <- &record
+	}
 }

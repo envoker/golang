@@ -42,6 +42,9 @@ func logFiller() error {
 		go testFn(wg, logger, i)
 	}
 
+	//time.Sleep(500 * time.Millisecond)
+	//l.Close()
+
 	wg.Wait()
 
 	return nil
