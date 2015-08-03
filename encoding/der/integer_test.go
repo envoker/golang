@@ -2,8 +2,6 @@ package der
 
 import (
 	"testing"
-
-	"github.com/envoker/golang/encoding/hex"
 )
 
 func TestIntegerSetGet(t *testing.T) {
@@ -57,8 +55,6 @@ func TestIntegerEncodeDecode(t *testing.T) {
 		t.Error(err)
 		return
 	}
-
-	t.Log(hex.Dump(bs))
 
 	err = J.Decode(bs)
 	if err != nil {

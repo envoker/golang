@@ -351,16 +351,21 @@ func (this *UtcTime) Decode(bs []byte) (err error) {
 			return
 		}
 
-		if size > 0 {
+		// second
+		{
+			this.sec = 0
 
-			if err = buffer.UnreadRune(); err != nil {
-				return
-			}
+			if size > 0 {
 
-			if (r >= '0') && (r <= '9') {
-
-				if this.sec, err = decodeTwoDigits(buffer); err != nil {
+				if err = buffer.UnreadRune(); err != nil {
 					return
+				}
+
+				if (r >= '0') && (r <= '9') {
+
+					if this.sec, err = decodeTwoDigits(buffer); err != nil {
+						return
+					}
 				}
 			}
 		}
