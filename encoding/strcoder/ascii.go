@@ -1,15 +1,16 @@
 package strcoder
 
 import (
+	"bytes"
 	"errors"
-	"strings"
+	"unicode/utf8"
 )
 
 type AsciiDecodeTable [256]rune
 
 const asciiRuneError = 127
 
-const E_RUNE = rune(-1)
+const e_RUNE = rune(-1)
 
 var Cp1251 = AsciiDecodeTable{
 	0x0000, 0x0001, 0x0002, 0x0003, 0x0004, 0x0005, 0x0006, 0x0007,
@@ -31,7 +32,7 @@ var Cp1251 = AsciiDecodeTable{
 	0x0402, 0x0403, 0x201A, 0x0453, 0x201E, 0x2026, 0x2020, 0x2021,
 	0x20AC, 0x2030, 0x0409, 0x2039, 0x040A, 0x040C, 0x040B, 0x040F,
 	0x0452, 0x2018, 0x2019, 0x201C, 0x201D, 0x2022, 0x2013, 0x2014,
-	E_RUNE, 0x2122, 0x0459, 0x203A, 0x045A, 0x045C, 0x045B, 0x045F,
+	e_RUNE, 0x2122, 0x0459, 0x203A, 0x045A, 0x045C, 0x045B, 0x045F,
 	0x00A0, 0x040E, 0x045E, 0x0408, 0x00A4, 0x0490, 0x00A6, 0x00A7,
 	0x0401, 0x00A9, 0x0404, 0x00AB, 0x00AC, 0x00AD, 0x00AE, 0x0407,
 	0x00B0, 0x00B1, 0x0406, 0x0456, 0x0491, 0x00B5, 0x00B6, 0x00B7,
@@ -90,12 +91,94 @@ var mapAsciiCodecs = map[string]AsciiDecodeTable{
 
 func getAsciiDecodeTable(codecType string) (AsciiDecodeTable, error) {
 
-	codecType = strings.ToLower(codecType)
-
 	dt, ok := mapAsciiCodecs[codecType]
 	if !ok {
 		return AsciiDecodeTable{}, errors.New("wrong codec type")
 	}
 
 	return dt, nil
+}
+
+type asciiEncoder struct {
+	m map[rune]int
+}
+
+func NewAsciiEncoder(dt AsciiDecodeTable) Encoder {
+
+	m := make(map[rune]int)
+	for i, r := range dt {
+		if utf8.ValidRune(r) {
+			m[r] = i
+		}
+	}
+
+	return &asciiEncoder{m}
+}
+
+func (e *asciiEncoder) Encode(s string) []byte {
+
+	buffer := bytes.NewBuffer(nil)
+
+	for _, r := range s {
+
+		i, ok := e.m[r]
+		if !ok {
+			i = asciiRuneError
+		}
+		buffer.WriteByte(byte(i))
+	}
+
+	return buffer.Bytes()
+}
+
+type asciiDecoder struct {
+	m map[int]rune
+}
+
+func NewAsciiDecoder(dt AsciiDecodeTable) Decoder {
+
+	m := make(map[int]rune)
+	for i, r := range dt {
+		if utf8.ValidRune(r) {
+			m[i] = r
+		}
+	}
+
+	return &asciiDecoder{m}
+}
+
+func (d *asciiDecoder) Decode(p []byte) string {
+
+	buffer := bytes.NewBuffer(nil)
+
+	for _, b := range p {
+
+		r, ok := d.m[int(b)]
+		if !ok {
+			r = utf8.RuneError
+		}
+		buffer.WriteRune(r)
+	}
+
+	return buffer.String()
+}
+
+func getAsciiEncoder(codec string) Encoder {
+
+	dt, err := getAsciiDecodeTable(codec)
+	if err != nil {
+		return nil
+	}
+
+	return NewAsciiEncoder(dt)
+}
+
+func getAsciiDecoder(codec string) Decoder {
+
+	dt, err := getAsciiDecodeTable(codec)
+	if err != nil {
+		return nil
+	}
+
+	return NewAsciiDecoder(dt)
 }
