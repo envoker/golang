@@ -11,13 +11,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/envoker/golang/logging/nalog"
+	"github.com/envoker/golang/logging/daylog"
 )
 
 func main() {
 
 	// logFiller
-	// logParser()
+	// logParser
 	// logGolang
 
 	if err := logFiller(); err != nil {
@@ -27,7 +27,13 @@ func main() {
 
 func logFiller() error {
 
-	l, err := nalog.New("./", nalog.LEVEL_WARNING)
+	logConfig := daylog.Config{
+		Dir:        "./",
+		Level:      daylog.LEVEL_DEBUG,
+		DaysNumber: 10,
+	}
+
+	l, err := daylog.New(logConfig)
 	if err != nil {
 		return err
 	}
@@ -35,39 +41,51 @@ func logFiller() error {
 
 	logger := l.Logger()
 
-	wg := new(sync.WaitGroup)
+	//wg := new(sync.WaitGroup)
 
 	for i := 0; i < 100; i++ {
-		wg.Add(1)
-		go testFn(wg, logger, i)
+		//wg.Add(1)
+		go testLoop(logger, i)
 	}
 
-	//time.Sleep(500 * time.Millisecond)
-	//l.Close()
+	time.Sleep(5 * time.Second)
 
-	wg.Wait()
+	//wg.Wait()
 
 	return nil
 }
 
-func testFn(wg *sync.WaitGroup, logger nalog.Logger, index int) {
+func testLoop(logger daylog.Logger, index int) {
+
+	r := newRand()
+	for {
+		logger.Logf(
+			daylog.Level(r.Intn(4)+1),
+			"routine(%d):%s",
+			index, randString(r, 40),
+		)
+		time.Sleep(10 * time.Millisecond)
+	}
+}
+
+func testFn(wg *sync.WaitGroup, logger daylog.Logger, index int) {
 
 	defer wg.Done()
 
 	r := newRand()
-	for i := 0; i < 10; i++ {
+	for i := 0; i < 100; i++ {
 		logger.Logf(
-			nalog.Level(r.Intn(4)+1),
+			daylog.Level(r.Intn(4)+1),
 			"routine(%d):%s",
-			index, randString(r, 20),
+			index, randString(r, 40),
 		)
-		time.Sleep(300 * time.Millisecond)
+		time.Sleep(10 * time.Millisecond)
 	}
 }
 
 func logParser() error {
 
-	fileName := "./2015-07-24.log"
+	fileName := "./2015-08-17.log"
 
 	file, err := os.Open(fileName)
 	if err != nil {

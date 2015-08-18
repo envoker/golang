@@ -1,4 +1,4 @@
-package nalog
+package daylog
 
 type Level int
 
@@ -27,7 +27,7 @@ var (
 	}
 )
 
-func (l Level) toString() string {
+func (l Level) String() string {
 	s, _ := key_Level[l]
 	return s
 }

@@ -1,11 +1,14 @@
 package date
 
-import (
-	"time"
-)
+import "time"
 
 type Date struct {
 	jd int // JulianDay
+}
+
+func DateFromTime(t time.Time) (Date, error) {
+	year, month, day := t.Date()
+	return DateFromYMD(year, Month(month), day)
 }
 
 func DateFromYMD(year int, month Month, day int) (Date, error) {
@@ -30,9 +33,7 @@ func DateFromJulianDay(jd int) (Date, error) {
 }
 
 func Now() Date {
-	t := time.Now()
-	year, month, day := t.Date()
-	d, _ := DateFromYMD(year, Month(month), day)
+	d, _ := DateFromTime(time.Now())
 	return d
 }
 
