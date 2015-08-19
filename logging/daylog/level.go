@@ -32,7 +32,7 @@ func (l Level) String() string {
 	return s
 }
 
-func (l Level) isValid() bool {
+func (l Level) Valid() bool {
 	_, ok := key_Level[l]
 	return ok
 }

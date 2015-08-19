@@ -26,7 +26,7 @@ type recordLogger struct {
 	mutex   sync.Mutex
 	records chan<- record
 	level   Level
-	stopped bool
+	closed  bool
 }
 
 func newRecordLogger(records chan<- record, level Level) *recordLogger {
@@ -34,7 +34,7 @@ func newRecordLogger(records chan<- record, level Level) *recordLogger {
 	return &recordLogger{
 		records: records,
 		level:   level,
-		stopped: false,
+		closed:  false,
 	}
 }
 
@@ -43,8 +43,24 @@ func (l *recordLogger) Close() error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
-	if !l.stopped {
-		l.stopped = true
+	if !l.closed {
+		l.closed = true
+	}
+
+	return nil
+}
+
+func (l *recordLogger) logErr(r *record) error {
+
+	l.mutex.Lock()
+	defer l.mutex.Unlock()
+
+	if l.closed {
+		return ErrorLoggerClosed
+	}
+
+	if (LEVEL_ERROR > r.level) || (r.level > l.level) {
+		return ErrorLevelAbort
 	}
 
 	return nil
@@ -52,20 +68,16 @@ func (l *recordLogger) Close() error {
 
 func (l *recordLogger) logRecord(level Level, m string) error {
 
-	{
-		l.mutex.Lock()
-		defer l.mutex.Unlock()
+	r := record{level, m}
 
-		if l.stopped {
-			return ErrorWriterIsClosed
-		}
-
-		if (LEVEL_ERROR > level) || (level > l.level) {
+	if err := l.logErr(&r); err != nil {
+		if err == ErrorLevelAbort {
 			return nil
 		}
+		return err
 	}
 
-	l.records <- record{level, m}
+	l.records <- r
 
 	return nil
 }

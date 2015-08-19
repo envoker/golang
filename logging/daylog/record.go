@@ -24,7 +24,7 @@ type recordJSON struct {
 	Message string `json:"message"`
 }
 
-func (r *record) EncodeXML(t time.Time) []byte {
+func (r *record) EncodeXML(t time.Time) ([]byte, error) {
 
 	p := recordXML{
 		Time:    t.Format("15:04:05"),
@@ -34,15 +34,15 @@ func (r *record) EncodeXML(t time.Time) []byte {
 
 	data, err := xml.Marshal(&p)
 	if err != nil {
-		return []byte{}
+		return nil, newError("xml.Marshal:", err.Error())
 	}
 
 	data = append(data, byte('\n'))
 
-	return data
+	return data, nil
 }
 
-func (r *record) EncodeJSON(t time.Time) []byte {
+func (r *record) EncodeJSON(t time.Time) ([]byte, error) {
 
 	p := recordJSON{
 		Time:    t.Format("15:04:05"),
@@ -52,10 +52,10 @@ func (r *record) EncodeJSON(t time.Time) []byte {
 
 	data, err := json.Marshal(&p)
 	if err != nil {
-		return []byte{}
+		return nil, newError("json.Marshal:", err.Error())
 	}
 
 	data = append(data, byte('\n'))
 
-	return data
+	return data, nil
 }

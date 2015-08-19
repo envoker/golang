@@ -41,7 +41,7 @@ func (w *recordWriter) Write(r record) error {
 
 		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
-			return err
+			return newError("os.OpenFile:", err.Error())
 		}
 
 		bw := bufio.NewWriter(file)
@@ -51,9 +51,14 @@ func (w *recordWriter) Write(r record) error {
 		w.bw = bw
 	}
 
-	bs := r.EncodeXML(t)
-	if _, err := w.bw.Write(bs); err != nil {
+	bs, err := r.EncodeXML(t)
+	if err != nil {
 		return err
+	}
+
+	_, err = w.bw.Write(bs)
+	if err != nil {
+		return newError("Write:", err.Error())
 	}
 
 	return nil
@@ -83,7 +88,7 @@ func (w *recordWriter) Flush() error {
 	return nil
 }
 
-func recordWriteWorker(quit chan struct{}, wg *sync.WaitGroup, records <-chan record, dirname string) {
+func recordWriteWorker(wg *sync.WaitGroup, quit chan struct{}, records <-chan record, dirname string) {
 
 	defer wg.Done()
 

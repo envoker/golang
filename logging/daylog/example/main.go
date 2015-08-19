@@ -29,7 +29,7 @@ func logFiller() error {
 
 	logConfig := daylog.Config{
 		Dir:        "./",
-		Level:      daylog.LEVEL_DEBUG,
+		Level:      daylog.LEVEL_INFO,
 		DaysNumber: 10,
 	}
 
@@ -39,7 +39,7 @@ func logFiller() error {
 	}
 	defer l.Close()
 
-	logger := l.Logger()
+	logger, _ := l.Logger()
 
 	//wg := new(sync.WaitGroup)
 
@@ -64,7 +64,7 @@ func testLoop(logger daylog.Logger, index int) {
 			"routine(%d):%s",
 			index, randString(r, 40),
 		)
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 	}
 }
 

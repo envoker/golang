@@ -36,7 +36,7 @@ func removeOld(dirName string, daysNumber int) error {
 	return nil
 }
 
-func removeOldWorker(quit chan struct{}, wg *sync.WaitGroup, dirName string, daysNumber int) {
+func removeOldWorker(wg *sync.WaitGroup, quit chan struct{}, dirName string, daysNumber int) {
 
 	defer wg.Done()
 

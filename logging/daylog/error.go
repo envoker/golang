@@ -14,5 +14,8 @@ func newErrorf(format string, a ...interface{}) error {
 }
 
 var (
-	ErrorWriterIsClosed = newError("ErrorWriterIsClosed")
+	ErrorLogClosed    = newError("ErrorLogClosed")
+	ErrorLoggerClosed = newError("ErrorLoggerClosed")
+	ErrorLevelInvalid = newError("ErrorLevelInvalid")
+	ErrorLevelAbort   = newError("ErrorLevelAbort")
 )
