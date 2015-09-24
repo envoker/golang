@@ -64,7 +64,7 @@ func testLoop(logger daylog.Logger, index int) {
 			"routine(%d):%s",
 			index, randString(r, 40),
 		)
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 	}
 }
 

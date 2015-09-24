@@ -1,5 +1,9 @@
 package daylog
 
+import (
+	"encoding/json"
+)
+
 type Level int
 
 const (
@@ -35,4 +39,33 @@ func (l Level) String() string {
 func (l Level) Valid() bool {
 	_, ok := key_Level[l]
 	return ok
+}
+
+func (l *Level) MarshalJSON() ([]byte, error) {
+
+	s, ok := key_Level[*l]
+	if !ok {
+		return nil, ErrorLevelInvalid
+	}
+
+	return json.Marshal(s)
+}
+
+func (l *Level) UnmarshalJSON(data []byte) error {
+
+	var s string
+
+	err := json.Unmarshal(data, &s)
+	if err != nil {
+		return err
+	}
+
+	level, ok := val_Level[s]
+	if !ok {
+		return ErrorLevelInvalid
+	}
+
+	*l = level
+
+	return nil
 }
