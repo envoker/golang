@@ -3,9 +3,9 @@ CHAB specification
 CHAB - Chander binary
 
 analogue: 
-	MessagePack: https://github.com/msgpack/msgpack/blob/master/spec.md#formats-ext
-
-	https://github.com/vmihailenco/msgpack
+	MessagePack: 
+		github.com/vmihailenco/msgpack
+		github.com/tinylib/msgp
 
 Type system
 
@@ -21,7 +21,6 @@ Types:
 	Array 		(7) - represents a sequence of objects
 	Map			(8) - represents key-value pairs of objects
 	Extended		(9) - represents a tuple of type information and object
-	Stop			(10) - represents a stop for Array and Map with unknown length
 
 
 //-----------------------------------------------------------------------------------------
@@ -43,8 +42,8 @@ where:
 	Bytes 		5
 	String 		6
 	Array 		7
-	Map		8
-	Extended 	9
+	Map			8
+	Extended		9
 	
 * BBBB (low nibble) - additional info (it depends on the type of)
 	
@@ -56,8 +55,8 @@ where:
 	Bytes 		- (1,2,4) -
 	String 		- (1,2,4) -
 	Array 		- (1,2,4) -
-	Map 		- (1,2,4) -
-	Extended	- (1,2,4) -
+	Map			- (1,2,4) -
+	Extended		- (1,2,4) -
 
 possible values:
 
@@ -87,12 +86,10 @@ possible values:
 	0x62 - string: (2^8  <= size < 2^16)
 	0x64 - string: (2^16 <= size < 2^32)
 
-	0x70 - array: (count - unknown)
 	0x71 - array: (count < 2^8)
 	0x72 - array: (2^8  <= count < 2^16)
 	0x74 - array: (2^16 <= count < 2^32)
 
-	0x80 - map: (count - unknown)
 	0x81 - map: (count < 2^8)
 	0x82 - map: (2^8  <= count < 2^16)
 	0x84 - map: (2^16 <= count < 2^32)
@@ -100,8 +97,6 @@ possible values:
 	0x91 - extended: (type < 2^8)
 	0x92 - extended: (2^8  <= type < 2^16)
 	0x94 - extended: (2^16 <= type < 2^32)
-	
-	0xA0 - stop for Array and Map with unknown length
 
 //-----------------------------------------------------------------------------------------
 Null format family (0):
@@ -224,6 +219,7 @@ byte array (2^16 <= length < 2^32):
 //-----------------------------------------------------------------------------------------
 String format family (6):
 
+
 string with (length < 2^8):
  ------------------------------
 |  0x61  |  XXXXXXXX  |  data  |
@@ -244,12 +240,6 @@ string with (2^16 <= length < 2^32):
 
 //-----------------------------------------------------------------------------------------
 Array format family (7):
-
-
-array with unknown length:
- ----------------------------------------------------
-|  0x70  |  object | object | ... | object  |  0xA0  |
- ----------------------------------------------------
 
 
 array with (length < 2^8):
@@ -280,12 +270,6 @@ where:
 Map format family (8):
 
 
-map with unknown length:
- ----------------------------------------------
-|  0x80  |  pair | pair | ... | pair  |  0xA0  |
- ----------------------------------------------
-
-
  ---------------------------------
 |  0x81  |  XXXXXXXX  |  N pairs  |
  ---------------------------------
@@ -304,7 +288,7 @@ map with unknown length:
 where:
 * pair - key-value:  object|object
 	* key - object of: Signed, Unsigned, String, Bytes
-	* value - any object, but not "Stop".
+	* value - any object.
 
 * XXXXXXXX - is a 8-bit unsigned integer which represents N
 * YYYYYYYY|YYYYYYYY - is a 16-bit big-endian unsigned integer which represents N
