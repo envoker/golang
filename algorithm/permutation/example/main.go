@@ -2,39 +2,53 @@ package main
 
 import (
 	"fmt"
+	"log"
 
 	"github.com/envoker/golang/algorithm/permutation"
 )
 
 func main() {
 
-	exampleTrace([]bool{true, false})
-	fmt.Println()
+	vs := []interface{}{
+		[]int{},
+		[]bool{true, false},
+		[]int{1, 2, 3},
+		[]string{"один", "два", "три", "четыте"},
+	}
 
-	exampleTrace([]int{1, 2, 3})
-	fmt.Println()
+	for _, v := range vs {
+		exampleTrace(v)
+	}
 
-	exampleTrace([]string{"a", "b", "c", "d"})
-	fmt.Println()
+	for i := 0; i < 10; i++ {
+		fmt.Printf("%d! = %d\n", i, factorial(i))
+	}
 }
 
 func exampleTrace(v interface{}) {
-	trace2(v, func() { fmt.Println(v) })
+	err := permutation.Trace(v,
+		func(w interface{}) bool {
+			fmt.Println(w)
+			return true
+		},
+	)
+	if err != nil {
+		log.Fatal(err.Error())
+	}
+	fmt.Println()
 }
 
-func trace1(v interface{}, fn func()) {
-	p, _ := permutation.New(v)
-	for {
-		fn()
-		if !p.Next() {
-			break
-		}
+func factorial(n int) int {
+	a := make([]struct{}, n)
+	i := 0
+	err := permutation.Trace(a,
+		func(_ interface{}) bool {
+			i++
+			return true
+		},
+	)
+	if err != nil {
+		log.Fatal(err.Error())
 	}
-}
-
-func trace2(v interface{}, fn func()) {
-	fn()
-	for p, _ := permutation.New(v); p.Next(); {
-		fn()
-	}
+	return i
 }

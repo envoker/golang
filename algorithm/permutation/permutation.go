@@ -65,3 +65,19 @@ func swap(v1, v2 reflect.Value) {
 	v1.Set(reflect.ValueOf(i2))
 	v2.Set(reflect.ValueOf(i1))
 }
+
+func Trace(v interface{}, fn func(v interface{}) bool) error {
+	p, err := New(v)
+	if err != nil {
+		return err
+	}
+	for {
+		if !fn(v) {
+			break
+		}
+		if !p.Next() {
+			break
+		}
+	}
+	return nil
+}

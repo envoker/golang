@@ -41,7 +41,8 @@ func testIntSlice(t *testing.T, as []int) {
 	i := 0
 	var vs []interface{}
 
-	fn := func() {
+	fn := func(_ interface{}) bool {
+
 		for j, v := range vs {
 			bs := v.([]int)
 			if reflect.DeepEqual(as, bs) {
@@ -50,28 +51,14 @@ func testIntSlice(t *testing.T, as []int) {
 		}
 		i++
 		vs = append(vs, cloneIntSlice(as))
+		return true
 	}
 
-	trace1(as, fn)
+	if err := Trace(as, fn); err != nil {
+		t.Fatal(err.Error())
+	}
 
 	if n := factorial(len(as)); i != n {
 		t.Logf("%d != %d", i, n)
-	}
-}
-
-func trace1(v interface{}, fn func()) {
-	p, _ := New(v)
-	for {
-		fn()
-		if !p.Next() {
-			break
-		}
-	}
-}
-
-func trace2(v interface{}, fn func()) {
-	fn()
-	for p, _ := New(v); p.Next(); {
-		fn()
 	}
 }
