@@ -248,7 +248,7 @@ func (n *Node) Encode(w io.Writer) (c int, err error) {
 	}
 
 	var cn int
-	var valueLength = n.v.EncodeLength()
+	var valueLength int
 
 	// 	Type
 	{
@@ -260,6 +260,8 @@ func (n *Node) Encode(w io.Writer) (c int, err error) {
 
 	//	Length
 	{
+		valueLength = n.v.EncodeLength()
+
 		L := Length(valueLength)
 
 		if cn, err = L.Encode(w); err != nil {
