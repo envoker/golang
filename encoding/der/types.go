@@ -33,27 +33,27 @@ const (
 	max_Class = CLASS_PRIVATE
 )
 
-func (val Class) IsValid() bool {
+func (c Class) IsValid() bool {
 
-	return (min_Class <= val) && (val <= max_Class)
+	return (min_Class <= c) && (c <= max_Class)
 }
 
-func (val Class) String() string {
+func (c Class) String() string {
 
-	var str string
+	var s string
 
-	switch val {
+	switch c {
 	case CLASS_UNIVERSAL:
-		str = "Universal"
+		s = "Universal"
 	case CLASS_APPLICATION:
-		str = "Application"
+		s = "Application"
 	case CLASS_CONTEXT_SPECIFIC:
-		str = "Context Specific"
+		s = "Context Specific"
 	case CLASS_PRIVATE:
-		str = "Private"
+		s = "Private"
 	}
 
-	return str
+	return s
 }
 
 //------------------------------------------------------------------------------

@@ -7,13 +7,11 @@ import (
 
 var byteOrder = binary.BigEndian
 
-//---------------------------------------------------------------------------------
 func byteSign(b byte) bool {
 
 	return ((b & 0x80) != 0)
 }
 
-//---------------------------------------------------------------------------------
 func siTrimm(bs []byte) []byte {
 
 	size := len(bs)
@@ -70,12 +68,10 @@ func siComplete(bs []byte, n int) []byte {
 	return bs
 }
 
-//---------------------------------------------------------------------------------
 type Integer struct {
 	bs []byte
 }
 
-//---------------------------------------------------------------------------------
 func (this *Integer) Set(value interface{}) error {
 
 	switch value.(type) {
@@ -182,7 +178,6 @@ func (this *Integer) Set(value interface{}) error {
 	return nil
 }
 
-//---------------------------------------------------------------------------------
 func (this *Integer) GetInt8() (v int8, ok bool) {
 
 	b := siComplete(this.bs, sizeOfUint8)
@@ -303,7 +298,6 @@ func (this *Integer) Bytes() []byte {
 	return this.bs
 }
 
-//---------------------------------------------------------------------------------
 func (this *Integer) Encode() (bs []byte, err error) {
 
 	if this == nil {
@@ -336,5 +330,3 @@ func (this *Integer) Decode(bs []byte) (err error) {
 func (this *Integer) InitRandomInstance(r *rand.Rand) {
 
 }
-
-//---------------------------------------------------------------------------------

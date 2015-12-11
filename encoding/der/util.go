@@ -16,7 +16,7 @@ const (
 	sizeOfUint64 = 8
 )
 
-func writeFullByte(w io.Writer, b byte) error {
+func writeByte(w io.Writer, b byte) error {
 
 	var bs [sizeOfUint8]byte
 
@@ -24,27 +24,27 @@ func writeFullByte(w io.Writer, b byte) error {
 
 	n, err := w.Write(bs[:])
 	if err != nil {
-		return newErrorf("writeFullByte: %s", err.Error())
+		return newErrorf("writeByte: %s", err.Error())
 	}
 
 	if n != sizeOfUint8 {
-		return newError("writeFullByte")
+		return newError("writeByte")
 	}
 
 	return nil
 }
 
-func readFullByte(r io.Reader) (byte, error) {
+func readByte(r io.Reader) (byte, error) {
 
 	var bs [sizeOfUint8]byte
 
 	n, err := r.Read(bs[:])
 	if err != nil {
-		return 0, newErrorf("readFullByte: %s", err.Error())
+		return 0, newErrorf("readByte: %s", err.Error())
 	}
 
 	if n != sizeOfUint8 {
-		return 0, newError("readFullByte")
+		return 0, newError("readByte")
 	}
 
 	b := bs[0]
@@ -52,39 +52,35 @@ func readFullByte(r io.Reader) (byte, error) {
 	return b, nil
 }
 
-func writeFull(w io.Writer, bs []byte) (n int, err error) {
+func writeFull(w io.Writer, data []byte) (n int, err error) {
 
-	n, err = w.Write(bs)
-	if err != nil {
-		err = newErrorf("writeFull: %s", err.Error())
-		return
-	}
+	var k int
 
-	if n != len(bs) {
-		err = newError("writeFull")
-		return
-	}
-
-	return
-}
-
-func readFull(r io.Reader, bs []byte) (n int, err error) {
-
-	n, err = r.Read(bs)
-	if err != nil {
-		err = newErrorf("readFull: %s", err.Error())
-		return
-	}
-
-	if n != len(bs) {
-		err = newError("readFull")
-		return
+	for n < len(data) {
+		k, err = w.Write(data[n:])
+		n += k
+		if err != nil {
+			return n, newErrorf("writeFull: %s", err.Error())
+		}
 	}
 
 	return
 }
 
-//--------------------------------------------------
+func readFull(r io.Reader, data []byte) (n int, err error) {
+
+	var k int
+
+	for n < len(data) {
+		k, err = r.Read(data[n:])
+		n += k
+		if err != nil {
+			return n, newErrorf("readFull: %s", err.Error())
+		}
+	}
+
+	return
+}
 
 // quo = x / y
 // rem = x % y
@@ -100,7 +96,6 @@ func newRand() *rand.Rand {
 	return rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
-//--------------------------------------------------
 func runeIsDigit(r rune) bool {
 	return (r >= 0x30) && (r <= 0x39)
 }
@@ -114,8 +109,6 @@ func runeToDigit(r rune) (digit int, err error) {
 	}
 	return
 }
-
-//--------------------------------------------------
 
 func byteIsDigit(b byte) bool {
 	return (b >= 0x30) && (b <= 0x39)
@@ -140,8 +133,6 @@ func digitToByte(digit int) (b byte, err error) {
 	}
 	return
 }
-
-//--------------------------------------------------
 
 func encodeTwoDigits(buffer *bytes.Buffer, val int) (err error) {
 

@@ -5,7 +5,6 @@ import (
 	"unicode/utf8"
 )
 
-//---------------------------------------------------------------------------------
 func PrimitiveNewNode(tn TagNumber) (node *Node, err error) {
 
 	var tagType TagType
@@ -31,7 +30,6 @@ func PrimitiveCheckNode(tn TagNumber, node *Node) (err error) {
 	return
 }
 
-//---------------------------------------------------------------------------------
 type Primitive struct {
 	bs []byte
 }
@@ -100,55 +98,51 @@ func (this *Primitive) Decode(r io.Reader, length int) (n int, err error) {
 	return
 }
 
-//------------------------------------------------------------------------------
 type Boolean bool
 
-func (this *Boolean) Encode() (bs []byte, err error) {
+func (b *Boolean) Encode() (data []byte, err error) {
 
-	if this == nil {
+	if b == nil {
 		err = newError("Boolean.Encode(): Boolean is nil")
-	}
-
-	if *this {
-		bs = []byte{0xFF}
-	} else {
-		bs = []byte{0x00}
-	}
-
-	return
-}
-
-func (this *Boolean) Decode(bs []byte) (err error) {
-
-	if len(bs) != 1 {
-		err = newError("Boolean.Decode()")
 		return
 	}
 
-	*this = (bs[0] != 0x00)
+	if *b {
+		data = []byte{0xFF}
+	} else {
+		data = []byte{0x00}
+	}
 
 	return
 }
 
-//------------------------------------------------------------------------------
+func (b *Boolean) Decode(data []byte) error {
+
+	if len(data) != 1 {
+		return newError("Boolean.Decode()")
+	}
+
+	*b = (data[0] != 0x00)
+
+	return nil
+}
+
 type String string
 
-func (this *String) Encode() (bs []byte, err error) {
+func (s *String) Encode() (data []byte, err error) {
 
-	bs = []byte(*this)
+	data = []byte(*s)
 	return
 }
 
-func (this *String) Decode(bs []byte) (err error) {
+func (s *String) Decode(data []byte) (err error) {
 
-	if !utf8.Valid(bs) {
-		err = newError("String.Decode(): data is not string")
+	if !utf8.Valid(data) {
+		err = newError("String.Decode(): data is not utf-8 string")
 		return
 	}
 
-	*this = String(bs)
+	*s = String(data)
 
 	return
 }
-
-//------------------------------------------------------------------------------

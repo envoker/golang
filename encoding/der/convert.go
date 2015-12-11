@@ -8,9 +8,9 @@ import (
 
 func ConvertToString(p *Node) (s string, err error) {
 
-	var buffer = new(bytes.Buffer)
+	var buffer bytes.Buffer
 
-	if err = nodeToString(p, buffer, 0); err != nil {
+	if err = nodeToString(p, &buffer, 0); err != nil {
 		return
 	}
 

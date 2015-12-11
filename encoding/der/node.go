@@ -5,7 +5,6 @@ import (
 	"io"
 )
 
-//------------------------------------------------------------------------------
 type Serializer interface {
 	SerializeDER() (*Node, error)
 }
@@ -14,7 +13,6 @@ type Deserializer interface {
 	DeserializeDER(*Node) error
 }
 
-//------------------------------------------------------------------------------
 type ContextSerializer interface {
 	ContextSerializeDER(tn TagNumber) (node *Node, err error)
 }
@@ -23,7 +21,6 @@ type ContextDeserializer interface {
 	ContextDeserializeDER(tn TagNumber, node *Node) (err error)
 }
 
-//------------------------------------------------------------------------------
 func Serialize(s Serializer) ([]byte, error) {
 
 	node, err := s.SerializeDER()
@@ -31,9 +28,9 @@ func Serialize(s Serializer) ([]byte, error) {
 		return nil, err
 	}
 
-	buffer := new(bytes.Buffer)
+	var buffer bytes.Buffer
 
-	if _, err = node.Encode(buffer); err != nil {
+	if _, err = node.Encode(&buffer); err != nil {
 		return nil, err
 	}
 
@@ -42,7 +39,7 @@ func Serialize(s Serializer) ([]byte, error) {
 
 func Deserialize(d Deserializer, data []byte) error {
 
-	buffer := new(bytes.Buffer)
+	var buffer bytes.Buffer
 
 	_, err := buffer.Write(data)
 	if err != nil {
@@ -50,7 +47,7 @@ func Deserialize(d Deserializer, data []byte) error {
 	}
 
 	node := new(Node)
-	if _, err = node.Decode(buffer); err != nil {
+	if _, err = node.Decode(&buffer); err != nil {
 		return err
 	}
 
@@ -98,7 +95,7 @@ func Deserialize(d Deserializer, r io.Reader) error {
 	return err
 }
 */
-//------------------------------------------------------------------------------
+
 type Node struct {
 	t TagType
 	v ValueCoder
@@ -145,85 +142,81 @@ func NewNode(classType ClassType, valueType ValueType,
 }
 */
 
-func NewNode(class Class, valueType ValueType, tagNumber TagNumber) (pNode *Node, err error) {
+func NewNode(class Class, valueType ValueType, tagNumber TagNumber) (*Node, error) {
 
 	var t TagType = TagType{class, valueType, tagNumber}
 	if !t.IsValid() {
-		err = newError("NewNode(): TagType is not valid")
-		return
+		return nil, newError("NewNode(): TagType is not valid")
 	}
 
-	pNode = new(Node)
+	var n Node
 
 	switch t.valueType {
 	case VT_PRIMITIVE:
-		pNode.v = new(Primitive)
+		n.v = new(Primitive)
 
 	case VT_CONSTRUCTED:
-		pNode.v = new(Constructed)
+		n.v = new(Constructed)
 	default:
-		err = newError("NewNode(): TagType is wrong")
-		return
+		return nil, newError("NewNode(): TagType is wrong")
 	}
 
-	pNode.t = t
+	n.t = t
 
-	return
+	return &n, nil
 }
 
-func (this *Node) GetValue() (v ValueCoder) {
+func (n *Node) GetValue() (v ValueCoder) {
 
-	if this != nil {
-		v = this.v
+	if n != nil {
+		v = n.v
 	}
 
 	return v
 }
 
-func (this *Node) SetType(t TagType) (err error) {
+func (n *Node) SetType(t TagType) error {
 
-	if this == nil {
-		err = newError("Node.SetType(): Node is nil")
-		return
+	if n == nil {
+		return newError("Node.SetType(): Node is nil")
 	}
 
 	if !t.IsValid() {
-		err = newError("Node.SetType(): type is not valid")
-		return
+		return newError("Node.SetType(): type is not valid")
 	}
 
 	switch t.valueType {
 	case VT_PRIMITIVE:
-		this.v = new(Primitive)
+		n.v = new(Primitive)
 
 	case VT_CONSTRUCTED:
-		this.v = new(Constructed)
+		n.v = new(Constructed)
 	}
 
-	this.t = t
+	n.t = t
 
-	return
+	return nil
 }
 
-func (this *Node) GetType() (t TagType, err error) {
+func (n *Node) GetType() (t TagType, err error) {
 
-	if this == nil {
+	if n == nil {
 		err = newError("Node.CheckType(): node is nil")
 		return
 	}
 
-	t = this.t
+	t = n.t
 	return
 }
 
-func (this *Node) CheckType(t TagType) (err error) {
+func (n *Node) CheckType(t TagType) (err error) {
 
-	if this == nil {
+	if n == nil {
 		err = newError("Node.CheckType(): node is nil")
 		return
 	}
 
-	b, err := IsEqualType(&(this.t), &t)
+	b, err := IsEqualType(&(n.t), &t)
 	if err != nil {
 		return
 	}
@@ -236,201 +229,99 @@ func (this *Node) CheckType(t TagType) (err error) {
 	return
 }
 
-func (this *Node) EncodeLength() (n int) {
+func (n *Node) EncodeLength() (c int) {
 
-	n = this.t.EncodeLength()
-	valueLength := this.v.EncodeLength()
+	c = n.t.EncodeLength()
+	valueLength := n.v.EncodeLength()
 	L := Length(valueLength)
-	n += L.EncodeLength()
-	n += valueLength
+	c += L.EncodeLength()
+	c += valueLength
 
 	return
 }
 
-func (this *Node) Encode(w io.Writer) (n int, err error) {
+func (n *Node) Encode(w io.Writer) (c int, err error) {
 
-	if this == nil {
+	if n == nil {
 		err = newError("Node.Encode(): Node is nil")
 		return
 	}
 
-	var m int
+	var cn int
+	var valueLength = n.v.EncodeLength()
 
-	//--------------------------------------------------
 	// 	Type
-	//--------------------------------------------------
-
-	if m, err = this.t.Encode(w); err != nil {
-		return
+	{
+		if cn, err = n.t.Encode(w); err != nil {
+			return
+		}
+		c += cn
 	}
-	n += m
 
-	//--------------------------------------------------
-	// 	Length
-	//--------------------------------------------------
+	//	Length
+	{
+		L := Length(valueLength)
 
-	valueLength := this.v.EncodeLength()
-	L := Length(valueLength)
-
-	if m, err = L.Encode(w); err != nil {
-		return
+		if cn, err = L.Encode(w); err != nil {
+			return
+		}
+		c += cn
 	}
-	n += m
 
-	//--------------------------------------------------
 	//	Value
-	//--------------------------------------------------
-
-	if m, err = this.v.Encode(w, valueLength); err != nil {
-		return
+	{
+		if cn, err = n.v.Encode(w, valueLength); err != nil {
+			return
+		}
+		c += cn
 	}
-	n += m
-
-	//--------------------------------------------------
 
 	return
 }
 
-func (this *Node) Decode(r io.Reader) (n int, err error) {
+func (n *Node) Decode(r io.Reader) (c int, err error) {
 
-	if this == nil {
+	if n == nil {
 		err = newError("Node.Decode(): Node is nil")
 		return
 	}
 
-	var m int
+	var cn int
+	var valueLength int
 
-	//--------------------------------------------------
 	// 	Type
-	//--------------------------------------------------
+	{
+		var T TagType
+		if cn, err = T.Decode(r); err != nil {
+			return
+		}
 
-	var T TagType
-	if m, err = T.Decode(r); err != nil {
-		return
+		if err = n.SetType(T); err != nil {
+			return
+		}
+
+		c += cn
 	}
 
-	if err = this.SetType(T); err != nil {
-		return
-	}
-
-	n += m
-
-	//--------------------------------------------------
 	//	Length
-	//--------------------------------------------------
+	{
+		var L Length
 
-	var L Length
+		if cn, err = L.Decode(r); err != nil {
+			return
+		}
+		c += cn
 
-	if m, err = L.Decode(r); err != nil {
-		return
+		valueLength = int(L)
 	}
-	n += m
 
-	valueLength := int(L)
-
-	//--------------------------------------------------
 	//	Value
-	//--------------------------------------------------
-	if m, err = this.v.Decode(r, valueLength); err != nil {
-		return
+	{
+		if cn, err = n.v.Decode(r, valueLength); err != nil {
+			return
+		}
+		c += cn
 	}
-	n += m
-
-	//--------------------------------------------------
 
 	return
 }
-
-//------------------------------------------------------------------------------
-/*
-func EncodeNode(bw BufferWriter, node *Node) (n int, err error) {
-
-	if node == nil {
-		err = newError("Node.Encode(): Node is nil")
-		return
-	}
-
-	var m int
-
-	//--------------------------------------------------
-	// 	Type
-	//--------------------------------------------------
-
-	if m, err = node.t.Encode(bw); err != nil {
-		return
-	}
-	n += m
-
-	//--------------------------------------------------
-	// 	Length
-	//--------------------------------------------------
-
-	valueLength := node.v.EncodeLength()
-	L := Length(valueLength)
-
-	if m, err = L.Encode(bw); err != nil {
-		return
-	}
-	n += m
-
-	//--------------------------------------------------
-	//	Value
-	//--------------------------------------------------
-
-	if m, err = node.v.Encode(bw, valueLength); err != nil {
-		return
-	}
-	n += m
-
-	//--------------------------------------------------
-
-	return
-}
-
-func DecodeNode(br BufferReader) (node *Node, n int, err error) {
-
-	node = new(Node)
-
-	var m int
-
-	//--------------------------------------------------
-	// 	Type
-	//--------------------------------------------------
-
-	var T TagType
-	if m, err = T.Decode(br); err != nil {
-		return
-	}
-
-	if err = node.SetType(T); err != nil {
-		return
-	}
-
-	n += m
-
-	//--------------------------------------------------
-	//	Length
-	//--------------------------------------------------
-
-	var L Length
-
-	if m, err = L.Decode(br); err != nil {
-		return
-	}
-	n += m
-
-	valueLength := int(L)
-
-	//--------------------------------------------------
-	//	Value
-	//--------------------------------------------------
-	if m, err = node.v.Decode(br, valueLength); err != nil {
-		return
-	}
-	n += m
-
-	//--------------------------------------------------
-
-	return
-}
-*/

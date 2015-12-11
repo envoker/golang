@@ -142,7 +142,7 @@ func (this *TagType) Encode(w io.Writer) (n int, err error) {
 	if tag_number < 0x1F {
 
 		b |= byte(tag_number)
-		if err = writeFullByte(w, b); err != nil {
+		if err = writeByte(w, b); err != nil {
 			return
 		}
 		n = 1
@@ -150,7 +150,7 @@ func (this *TagType) Encode(w io.Writer) (n int, err error) {
 	}
 
 	b |= 0x1F
-	if err = writeFullByte(w, b); err != nil {
+	if err = writeByte(w, b); err != nil {
 		return
 	}
 
@@ -171,14 +171,14 @@ func (this *TagType) Encode(w io.Writer) (n int, err error) {
 	for i := 0; i < count-1; i++ {
 
 		b = byte(((tag_number >> shift) & 0x7F) | 0x80)
-		if err = writeFullByte(w, b); err != nil {
+		if err = writeByte(w, b); err != nil {
 			return
 		}
 		shift -= 7
 	}
 
 	b = byte(tag_number & 0x7F)
-	if err = writeFullByte(w, b); err != nil {
+	if err = writeByte(w, b); err != nil {
 		return
 	}
 
@@ -199,7 +199,7 @@ func (this *TagType) Decode(r io.Reader) (n int, err error) {
 		return
 	}
 
-	if b, err = readFullByte(r); err != nil {
+	if b, err = readByte(r); err != nil {
 		return
 	}
 
@@ -230,7 +230,7 @@ func (this *TagType) Decode(r io.Reader) (n int, err error) {
 
 	for i := 0; i < 5; i++ {
 
-		if b, err = readFullByte(r); err != nil {
+		if b, err = readByte(r); err != nil {
 			return
 		}
 
@@ -247,58 +247,48 @@ func (this *TagType) Decode(r io.Reader) (n int, err error) {
 
 func (this *TagType) InitRandomInstance(r *rand.Rand) {
 
-	if this == nil {
-		return
-	}
-
-	//------------------------------------------------
 	//	classType
-	//------------------------------------------------
-
-	n := r.Intn(4)
-	switch n {
-	case 0:
-		this.class = CLASS_UNIVERSAL
-	case 1:
-		this.class = CLASS_APPLICATION
-	case 2:
-		this.class = CLASS_CONTEXT_SPECIFIC
-	case 3:
-		this.class = CLASS_PRIVATE
+	{
+		n := r.Intn(4)
+		switch n {
+		case 0:
+			this.class = CLASS_UNIVERSAL
+		case 1:
+			this.class = CLASS_APPLICATION
+		case 2:
+			this.class = CLASS_CONTEXT_SPECIFIC
+		case 3:
+			this.class = CLASS_PRIVATE
+		}
 	}
 
-	//------------------------------------------------
 	//	valueType
-	//------------------------------------------------
-
-	if r.Intn(100) < 50 {
-		this.valueType = VT_PRIMITIVE
-	} else {
-		this.valueType = VT_CONSTRUCTED
+	{
+		if r.Intn(100) < 50 {
+			this.valueType = VT_PRIMITIVE
+		} else {
+			this.valueType = VT_CONSTRUCTED
+		}
 	}
 
-	//------------------------------------------------
 	//	tagNumber
-	//------------------------------------------------
-
-	number := 0
-	countBytes := r.Intn(5)
-	switch countBytes {
-	case 0:
-		number = r.Intn(0x80)
-	case 1:
-		number = r.Intn(0x4000)
-	case 2:
-		number = r.Intn(0x200000)
-	case 3:
-		number = r.Intn(0x10000000)
-	default:
-		number = r.Intn(0x7FFFFFFF)
+	{
+		number := 0
+		countBytes := r.Intn(5)
+		switch countBytes {
+		case 0:
+			number = r.Intn(0x80)
+		case 1:
+			number = r.Intn(0x4000)
+		case 2:
+			number = r.Intn(0x200000)
+		case 3:
+			number = r.Intn(0x10000000)
+		default:
+			number = r.Intn(0x7FFFFFFF)
+		}
+		this.tagNumber = TagNumber(number)
 	}
-	this.tagNumber = TagNumber(number)
-
-	//------------------------------------------------
-
 }
 
 func IsEqualType(a, b *TagType) (bool, error) {

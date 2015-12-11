@@ -1,18 +1,16 @@
 package der
 
-import (
-	"io"
-)
+import "io"
 
 type Length int
 
-func (this *Length) EncodeLength() (n int) {
+func (pl *Length) EncodeLength() (n int) {
 
-	if this == nil {
+	if pl == nil {
 		return
 	}
 
-	val := int(*this)
+	val := int(*pl)
 
 	switch {
 	case (val < 0x80):
@@ -30,7 +28,7 @@ func (this *Length) EncodeLength() (n int) {
 	return
 }
 
-func (this *Length) Encode(w io.Writer) (n int, err error) {
+func (pl *Length) Encode(w io.Writer) (n int, err error) {
 
 	var (
 		b     byte
@@ -39,16 +37,16 @@ func (this *Length) Encode(w io.Writer) (n int, err error) {
 		shift uint
 	)
 
-	if this == nil {
+	if pl == nil {
 		err = newError("Length is nil")
 		return
 	}
 
-	val = int(*this)
+	val = int(*pl)
 
 	if val < 0x80 {
 		b = byte(val)
-		if err = writeFullByte(w, b); err != nil {
+		if err = writeByte(w, b); err != nil {
 			return
 		}
 		n = 1
@@ -67,7 +65,7 @@ func (this *Length) Encode(w io.Writer) (n int, err error) {
 	}
 
 	b = 0x80 | byte(count)
-	if err = writeFullByte(w, b); err != nil {
+	if err = writeByte(w, b); err != nil {
 		return
 	}
 
@@ -75,7 +73,7 @@ func (this *Length) Encode(w io.Writer) (n int, err error) {
 	for i := 0; i < count; i++ {
 
 		b = byte((val >> shift) & 0xFF)
-		if err = writeFullByte(w, b); err != nil {
+		if err = writeByte(w, b); err != nil {
 			return
 		}
 
@@ -87,7 +85,7 @@ func (this *Length) Encode(w io.Writer) (n int, err error) {
 	return
 }
 
-func (this *Length) Decode(r io.Reader) (n int, err error) {
+func (pl *Length) Decode(r io.Reader) (n int, err error) {
 
 	var (
 		b     byte
@@ -96,18 +94,18 @@ func (this *Length) Decode(r io.Reader) (n int, err error) {
 		shift uint
 	)
 
-	if this == nil {
+	if pl == nil {
 		err = newError("Length is nil")
 		return
 	}
 
-	if b, err = readFullByte(r); err != nil {
+	if b, err = readByte(r); err != nil {
 		return
 	}
 
 	if (b & 0x80) == 0x00 {
 
-		*this = Length(b)
+		*pl = Length(b)
 		n = 1
 		return
 	}
@@ -121,14 +119,14 @@ func (this *Length) Decode(r io.Reader) (n int, err error) {
 	shift = 8
 	for i := 0; i < count; i++ {
 
-		if b, err = readFullByte(r); err != nil {
+		if b, err = readByte(r); err != nil {
 			return
 		}
 
 		val = (val << shift) | int(b)
 	}
 
-	*this = Length(val)
+	*pl = Length(val)
 	n = count + 1
 
 	return

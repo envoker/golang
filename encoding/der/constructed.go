@@ -4,7 +4,6 @@ import (
 	"io"
 )
 
-//------------------------------------------------------------------------------
 type Container interface {
 	AppendChild(pChildNode *Node) (result bool)
 	FirstChild() (pChildNode *Node)
@@ -13,7 +12,6 @@ type Container interface {
 	ChildByIndex(Index int) (pChildNode *Node)
 }
 
-//------------------------------------------------------------------------------
 func ChildSerialize(container Container, s ContextSerializer, tn TagNumber) (err error) {
 
 	var pChildNode *Node
@@ -35,7 +33,6 @@ func ChildDeserialize(container Container, d ContextDeserializer, tn TagNumber) 
 	return
 }
 
-//------------------------------------------------------------------------------
 func ConstructedNewNode(tn TagNumber) (node *Node, err error) {
 
 	var tagType TagType
@@ -61,7 +58,6 @@ func ConstructedCheckNode(tn TagNumber, node *Node) (err error) {
 	return
 }
 
-//------------------------------------------------------------------------------
 func SequenceNewNode() (node *Node, err error) {
 
 	var tagType TagType
@@ -86,8 +82,6 @@ func SequenceCheckNode(node *Node) (err error) {
 
 	return
 }
-
-//------------------------------------------------------------------------------
 
 type Constructed struct {
 	nodes []*Node
