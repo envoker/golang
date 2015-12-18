@@ -154,7 +154,7 @@ func (this *UtcTime) GetValue() (t time.Time, ok bool) {
 		offset = this.zone * 60
 	}
 
-	loc := time.FixedZone("", offset)
+	loc := time.FixedZone("UTC", offset)
 	t = time.Date(year, month, day, hour, min, sec, 0, loc)
 	ok = true
 

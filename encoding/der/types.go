@@ -90,6 +90,7 @@ const (
 	UT_ENUMERATED   TagNumber = 0x0A
 	UT_UTF8_STRING  TagNumber = 0x0C
 	UT_SEQUENCE     TagNumber = 0x10
+	UT_UTC_TIME     TagNumber = 0x17
 )
 
 //------------------------------------------------------------------------------

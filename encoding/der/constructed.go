@@ -5,32 +5,28 @@ import (
 )
 
 type Container interface {
-	AppendChild(pChildNode *Node) (result bool)
-	FirstChild() (pChildNode *Node)
-	ChildCount() (n int)
-	ChildByNumber(tn TagNumber) (pChildNode *Node)
-	ChildByIndex(Index int) (pChildNode *Node)
+	AppendChild(*Node)
+	FirstChild() *Node
+	ChildCount() int
+	ChildByNumber(tn TagNumber) *Node
+	ChildByIndex(index int) *Node
 }
 
-func ChildSerialize(container Container, s ContextSerializer, tn TagNumber) (err error) {
+func ChildSerialize(container Container, s ContextSerializer, tn TagNumber) error {
 
-	var pChildNode *Node
-	if pChildNode, err = s.ContextSerializeDER(tn); err != nil {
-		return
+	child, err := s.ContextSerializeDER(tn)
+	if err != nil {
+		return err
 	}
 
-	container.AppendChild(pChildNode)
+	container.AppendChild(child)
 
-	return
+	return nil
 }
 
-func ChildDeserialize(container Container, d ContextDeserializer, tn TagNumber) (err error) {
-
-	var pChildNode *Node
-	pChildNode = container.ChildByNumber(tn)
-	err = d.ContextDeserializeDER(tn, pChildNode)
-
-	return
+func ChildDeserialize(container Container, d ContextDeserializer, tn TagNumber) error {
+	child := container.ChildByNumber(tn)
+	return d.ContextDeserializeDER(tn, child)
 }
 
 func ConstructedNewNode(tn TagNumber) (node *Node, err error) {
@@ -58,36 +54,32 @@ func ConstructedCheckNode(tn TagNumber, node *Node) (err error) {
 	return
 }
 
-func SequenceNewNode() (node *Node, err error) {
+func NewNodeSequence() (*Node, error) {
 
 	var tagType TagType
 	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
 
-	node = new(Node)
-	if err = node.SetType(tagType); err != nil {
-		return
+	node := new(Node)
+	if err := node.SetType(tagType); err != nil {
+		return nil, err
 	}
 
-	return
+	return node, nil
 }
 
-func SequenceCheckNode(node *Node) (err error) {
+func SequenceCheckNode(node *Node) error {
 
 	var tagType TagType
 	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
 
-	if err = node.CheckType(tagType); err != nil {
-		return
-	}
-
-	return
+	return node.CheckType(tagType)
 }
 
 type Constructed struct {
 	nodes []*Node
 }
 
-func (p Constructed) EncodeLength() (n int) {
+func (p *Constructed) EncodeLength() (n int) {
 
 	n = 0
 	for _, node := range p.nodes {
@@ -139,60 +131,35 @@ func (p *Constructed) Decode(r io.Reader, length int) (n int, err error) {
 	return
 }
 
-func (p *Constructed) AppendChild(child *Node) (result bool) {
-
-	if p != nil {
-		if child != nil {
-			p.nodes = append(p.nodes, child)
-			result = true
-		}
+func (c *Constructed) AppendChild(child *Node) {
+	if child != nil {
+		c.nodes = append(c.nodes, child)
 	}
-	return
 }
 
-func (this *Constructed) FirstChild() (child *Node) {
-
-	if this != nil {
-
-		if len(this.nodes) > 0 {
-			child = this.nodes[0]
-
-		}
+func (c *Constructed) FirstChild() *Node {
+	if len(c.nodes) > 0 {
+		return c.nodes[0]
 	}
-
-	return
+	return nil
 }
 
-func (this *Constructed) ChildCount() (n int) {
-
-	if this != nil {
-		n = len(this.nodes)
-	}
-
-	return
+func (c *Constructed) ChildCount() int {
+	return len(c.nodes)
 }
 
-func (this *Constructed) ChildByNumber(tn TagNumber) (child *Node) {
-
-	if this != nil {
-		for _, node := range this.nodes {
-			if node.t.tagNumber == tn {
-				child = node
-				break
-			}
+func (c *Constructed) ChildByNumber(tn TagNumber) *Node {
+	for _, node := range c.nodes {
+		if node.t.tagNumber == tn {
+			return node
 		}
 	}
-
-	return
+	return nil
 }
 
-func (this *Constructed) ChildByIndex(Index int) (child *Node) {
-
-	if this != nil {
-		if (Index >= 0) && (Index < len(this.nodes)) {
-			child = this.nodes[Index]
-		}
+func (c *Constructed) ChildByIndex(index int) *Node {
+	if (0 <= index) && (index < len(c.nodes)) {
+		return c.nodes[index]
 	}
-
-	return
+	return nil
 }
