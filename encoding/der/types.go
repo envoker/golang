@@ -87,6 +87,7 @@ const (
 	UT_INTEGER      TagNumber = 0x02
 	UT_BIT_STRING   TagNumber = 0x03
 	UT_OCTET_STRING TagNumber = 0x04
+	UT_NULL         TagNumber = 0x05
 	UT_ENUMERATED   TagNumber = 0x0A
 	UT_UTF8_STRING  TagNumber = 0x0C
 	UT_SEQUENCE     TagNumber = 0x10
