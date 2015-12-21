@@ -1,146 +1,13 @@
 package der
 
 import (
-	"bytes"
 	"io"
 )
-
-type Serializer interface {
-	SerializeDER() (*Node, error)
-}
-
-type Deserializer interface {
-	DeserializeDER(*Node) error
-}
-
-type ContextSerializer interface {
-	ContextSerializeDER(tn TagNumber) (node *Node, err error)
-}
-
-type ContextDeserializer interface {
-	ContextDeserializeDER(tn TagNumber, node *Node) (err error)
-}
-
-func Serialize(s Serializer) ([]byte, error) {
-
-	node, err := s.SerializeDER()
-	if err != nil {
-		return nil, err
-	}
-
-	var buffer bytes.Buffer
-
-	if _, err = node.Encode(&buffer); err != nil {
-		return nil, err
-	}
-
-	return buffer.Bytes(), nil
-}
-
-func Deserialize(d Deserializer, data []byte) error {
-
-	var buffer bytes.Buffer
-
-	_, err := buffer.Write(data)
-	if err != nil {
-		return err
-	}
-
-	node := new(Node)
-	if _, err = node.Decode(&buffer); err != nil {
-		return err
-	}
-
-	if err = d.DeserializeDER(node); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-/*
-func Serialize(s Serializer, w io.Writer) error {
-
-	var (
-		err  error
-		node *Node
-	)
-
-	if node, err = s.SerializeDER(); err != nil {
-		return err
-	}
-
-	if _, err = node.Encode(w); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Deserialize(d Deserializer, r io.Reader) error {
-
-	var (
-		err  error
-		node = new(Node)
-	)
-
-	if _, err = node.Decode(r); err != nil {
-		return err
-	}
-
-	if err = d.DeserializeDER(node); err != nil {
-		return err
-	}
-
-	return err
-}
-*/
 
 type Node struct {
 	t TagType
 	v ValueCoder
 }
-
-/*
-func NewNode(t TagType) (pNode *Node) {
-
-	if t.IsValid() {
-
-		pNode = new(Node)
-		pNode.t = t
-
-		switch {
-		case (t.valueType == VT_PRIMITIVE):
-			pNode.v = new(Primitive)
-
-		case (t.valueType == VT_CONSTRUCTED):
-			pNode.v = new(Constructed)
-		}
-	}
-
-	return
-}
-
-func NewNode(classType ClassType, valueType ValueType,
-	tagNumber TagNumber) *Node {
-
-	node := new(Node)
-
-	node.t.classType = classType
-	node.t.valueType = valueType
-	node.t.tagNumber = tagNumber
-
-	switch valueType {
-	case VALUE_TYPE__PRIMITIVE:
-		node.v = new(Primitive)
-
-	case VALUE_TYPE__CONSTRUCTED:
-		node.v = new(Constructed)
-	}
-
-	return node
-}
-*/
 
 func NewNode(class Class, valueType ValueType, tagNumber TagNumber) (*Node, error) {
 
@@ -317,4 +184,14 @@ func (n *Node) Decode(r io.Reader) (c int, err error) {
 	}
 
 	return
+}
+
+func NewNodeSequence() (*Node, error) {
+	return NewNode(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
+}
+
+func CheckNodeSequence(node *Node) error {
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
+	return node.CheckType(tagType)
 }

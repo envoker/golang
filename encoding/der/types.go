@@ -16,7 +16,6 @@ type ValueCoder interface {
 	Decode(r io.Reader, length int) (n int, err error)
 }
 
-//------------------------------------------------------------------------------
 type Class int
 
 const (
@@ -56,7 +55,6 @@ func (c Class) String() string {
 	return s
 }
 
-//------------------------------------------------------------------------------
 type ValueType int
 
 const (
@@ -76,12 +74,9 @@ func (val ValueType) IsValid() bool {
 	return (min_ValueType <= val) && (val <= max_ValueType)
 }
 
-//------------------------------------------------------------------------------
 type TagNumber uint
 
-//------------------------------------------------------------------------------
 // Universal types
-
 const (
 	UT_BOOLEAN      TagNumber = 0x01
 	UT_INTEGER      TagNumber = 0x02
@@ -93,5 +88,3 @@ const (
 	UT_SEQUENCE     TagNumber = 0x10
 	UT_UTC_TIME     TagNumber = 0x17
 )
-
-//------------------------------------------------------------------------------

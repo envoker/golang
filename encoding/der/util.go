@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"io"
 	"math/rand"
+	"reflect"
 	"time"
 )
 
@@ -206,4 +207,20 @@ func decodeTwoDigits(buffer *bytes.Buffer) (val int, err error) {
 	}
 
 	return
+}
+
+func isNil(v interface{}) bool {
+	return (v == nil) || (reflect.ValueOf(v).IsNil())
+}
+
+func valueSetZero(v reflect.Value) {
+	zero := reflect.Zero(v.Type())
+	v.Set(zero)
+}
+
+func valueMake(v reflect.Value) {
+	if t := v.Type(); t.Kind() == reflect.Ptr {
+		nv := reflect.New(t.Elem())
+		v.Set(nv)
+	}
 }

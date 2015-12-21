@@ -1,64 +1,39 @@
 package der
 
 import (
+	"math/rand"
 	"testing"
 )
 
-func TestIntegerSetGet(t *testing.T) {
-
-	var (
-		a      Integer
-		u1, u2 uint16
-		ok     bool
-	)
-
-	r := newRand()
-
-	for i := 0; i < 1000000; i++ {
-
-		u1 = uint16(r.Intn(65536))
-
-		if err := a.Set(u1); err != nil {
-			t.Error(err)
-			return
-		}
-
-		if u2, ok = a.GetUint16(); !ok {
-			t.Error("GetValue Error")
-			return
-		}
-
-		if u1 != u2 {
-			t.Error("Equal Error")
-			return
-		}
+func randInt64(r *rand.Rand) int64 {
+	a := (r.Int63() >> uint(r.Intn(62)))
+	if (r.Int() & 1) == 0 {
+		a = -a
 	}
-
+	return a
 }
 
-func TestIntegerEncodeDecode(t *testing.T) {
+func TestInt64Marshal(t *testing.T) {
 
-	var (
-		err  error
-		I, J Integer
-		bs   []byte
-	)
+	var a, b int64
+	r := newRand()
 
-	err = I.Set(0)
-	if err != nil {
-		t.Error(err)
-		return
-	}
+	for i := 0; i < 10000; i++ {
 
-	bs, err = I.Encode()
-	if err != nil {
-		t.Error(err)
-		return
-	}
+		a = randInt64(r)
 
-	err = J.Decode(bs)
-	if err != nil {
-		t.Error(err)
-		return
+		data, err := Marshal(a)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		err = Unmarshal(data, &b)
+		if err != nil {
+			t.Fatal(err.Error())
+		}
+
+		if a != b {
+			t.Fatalf("%d != %d", a, b)
+		}
 	}
 }

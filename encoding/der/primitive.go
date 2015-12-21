@@ -2,7 +2,6 @@ package der
 
 import (
 	"io"
-	"unicode/utf8"
 )
 
 func PrimitiveNewNode(tn TagNumber) (node *Node, err error) {
@@ -34,20 +33,8 @@ type Primitive struct {
 	data []byte
 }
 
-func (p *Primitive) Bytes() []byte {
-	return p.data
-}
-
-func (p *Primitive) SetBytes(bs []byte) {
-	p.data = bs
-}
-
-func (p *Primitive) EncodeLength() (n int) {
-
-	if p != nil {
-		n = len(p.data)
-	}
-	return
+func (p *Primitive) EncodeLength() int {
+	return len(p.data)
 }
 
 func (p *Primitive) Encode(w io.Writer, length int) (n int, err error) {
@@ -81,104 +68,52 @@ func (p *Primitive) Decode(r io.Reader, length int) (n int, err error) {
 		return
 	}
 
-	var bs []byte = make([]byte, length)
+	data := make([]byte, length)
 
-	n, err = readFull(r, bs)
+	n, err = readFull(r, data)
 	if err != nil {
 		return
 	}
 
-	if n != length {
-		err = newError("Primitive.Decode()")
-		return
-	}
-
-	p.SetBytes(bs)
+	p.data = data
 
 	return
 }
 
-/*
-type Boolean bool
-
-func (b *Boolean) Encode() (data []byte, err error) {
-
-	if *b {
-		data = []byte{0xFF}
-	} else {
-		data = []byte{0x00}
+func (p *Primitive) SetBool(x bool) {
+	p.data = []byte{0}
+	if x {
+		p.data[0] = 0xFF
 	}
-
-	return
 }
 
-func (b *Boolean) Decode(data []byte) error {
-
-	if len(data) != 1 {
-		return newError("Boolean.Decode()")
+func (p *Primitive) Bool() bool {
+	if len(p.data) != 1 {
+		panic("value not bool")
 	}
-
-	*b = (data[0] != 0x00)
-
-	return nil
-}
-*/
-
-type String string
-
-func (s *String) Encode() (data []byte, err error) {
-
-	data = []byte(*s)
-	return
-}
-
-func (s *String) Decode(data []byte) error {
-
-	if !utf8.Valid(data) {
-		return newError("String.Decode(): data is not utf-8 string")
-	}
-
-	*s = String(data)
-
-	return nil
+	return (p.data[0] != 0)
 }
 
 func (p *Primitive) SetInt(x int64) {
-
-	data := make([]byte, sizeOfUint64)
-	byteOrder.PutUint64(data, uint64(x))
-
-	p.data = intBytesTrimm(data)
+	p.data = intEncode(x)
 }
 
 func (p *Primitive) SetUint(x uint64) {
-
-	data := make([]byte, sizeOfUint64+1)
-	data[0] = 0x00
-	byteOrder.PutUint64(data[1:], x)
-
-	p.data = intBytesTrimm(data)
+	p.data = uintEncode(x)
 }
 
 func (p *Primitive) Int() int64 {
-
-	data := intBytesComplete(p.data, sizeOfUint64)
-	if len(data) < sizeOfUint64 {
-		return 0
-	}
-
-	return int64(byteOrder.Uint64(data))
+	return intDecode(p.data)
 }
 
 func (p *Primitive) Uint() uint64 {
+	return uintDecode(p.data)
+}
 
-	data := intBytesComplete(p.data, sizeOfUint64+1)
-	if len(data) < sizeOfUint64+1 {
-		return 0
-	}
-	if data[0] != 0 {
-		return 0
-	}
+func (p *Primitive) Bytes() []byte {
+	return p.data
+}
 
-	return byteOrder.Uint64(data[1:])
+func (p *Primitive) SetBytes(bs []byte) {
+	p.data = bs
 }

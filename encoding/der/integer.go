@@ -67,267 +67,42 @@ func intBytesComplete(bs []byte, n int) []byte {
 	return bs
 }
 
-/*
-type Integer struct {
-	bs []byte
+func intEncode(x int64) []byte {
+
+	data := make([]byte, sizeOfUint64)
+	byteOrder.PutUint64(data, uint64(x))
+
+	return intBytesTrimm(data)
 }
 
-func (this *Integer) Set(value interface{}) error {
+func uintEncode(x uint64) []byte {
 
-	switch value.(type) {
+	data := make([]byte, sizeOfUint64+1)
+	data[0] = 0x00
+	byteOrder.PutUint64(data[1:], x)
 
-	// signed types
-	case int8:
-		{
-			v := value.(int8)
-			b := make([]byte, sizeOfUint8)
-			b[0] = uint8(v)
-			this.bs = b
-		}
-
-	case int16:
-		{
-			v := value.(int16)
-			b := make([]byte, sizeOfUint16)
-			byteOrder.PutUint16(b, uint16(v))
-			this.bs = b
-		}
-
-	case int32:
-		{
-			v := value.(int32)
-			b := make([]byte, sizeOfUint32)
-			byteOrder.PutUint32(b, uint32(v))
-			this.bs = b
-		}
-
-	case int64:
-		{
-			v := value.(int64)
-			b := make([]byte, sizeOfUint64)
-			byteOrder.PutUint64(b, uint64(v))
-			this.bs = b
-		}
-
-	case int:
-		{
-			v := value.(int)
-			b := make([]byte, sizeOfUint64)
-			byteOrder.PutUint64(b, uint64(v))
-			this.bs = b
-		}
-
-	// unsigned types
-	case uint8:
-		{
-			v := value.(uint8)
-			b := make([]byte, sizeOfUint8+1)
-			b[0] = 0x00
-			b[1] = v
-			this.bs = b
-		}
-
-	case uint16:
-		{
-			v := value.(uint16)
-			b := make([]byte, sizeOfUint16+1)
-			b[0] = 0x00
-			byteOrder.PutUint16(b[1:], v)
-			this.bs = b
-		}
-
-	case uint32:
-		{
-			v := value.(uint32)
-			b := make([]byte, sizeOfUint32+1)
-			b[0] = 0x00
-			byteOrder.PutUint32(b[1:], v)
-			this.bs = b
-		}
-
-	case uint64:
-		{
-			v := value.(uint64)
-			b := make([]byte, sizeOfUint64+1)
-			b[0] = 0x00
-			byteOrder.PutUint64(b[1:], v)
-			this.bs = b
-		}
-
-	case uint:
-		{
-			v := value.(uint)
-			b := make([]byte, sizeOfUint64+1)
-			b[0] = 0x00
-			byteOrder.PutUint64(b[1:], uint64(v))
-			this.bs = b
-		}
-
-	case []byte:
-		{
-			bs := value.([]byte)
-			this.bs = bs
-		}
-
-	default:
-		return ErrorIntegerSetWrongType
-	}
-
-	this.bs = siTrimm(this.bs)
-
-	return nil
+	return intBytesTrimm(data)
 }
 
-func (this *Integer) GetInt8() (v int8, ok bool) {
+func intDecode(data []byte) int64 {
 
-	b := siComplete(this.bs, sizeOfUint8)
-	if len(b) != sizeOfUint8 {
-		return
+	data = intBytesComplete(data, sizeOfUint64)
+	if len(data) < sizeOfUint64 {
+		return 0
 	}
 
-	v = int8(b[0])
-	ok = true
-
-	return
+	return int64(byteOrder.Uint64(data))
 }
 
-func (this *Integer) GetInt16() (v int16, ok bool) {
+func uintDecode(data []byte) uint64 {
 
-	b := siComplete(this.bs, sizeOfUint16)
-	if len(b) != sizeOfUint16 {
-		return
+	data = intBytesComplete(data, sizeOfUint64+1)
+	if len(data) < sizeOfUint64+1 {
+		return 0
+	}
+	if data[0] != 0 {
+		return 0
 	}
 
-	v = int16(byteOrder.Uint16(b))
-	ok = true
-
-	return
+	return byteOrder.Uint64(data[1:])
 }
-
-func (this *Integer) GetInt32() (v int32, ok bool) {
-
-	b := siComplete(this.bs, sizeOfUint32)
-	if len(b) != sizeOfUint32 {
-		return
-	}
-
-	v = int32(byteOrder.Uint32(b))
-	ok = true
-
-	return
-}
-
-func (this *Integer) GetInt64() (v int64, ok bool) {
-
-	b := siComplete(this.bs, sizeOfUint64)
-	if len(b) != sizeOfUint64 {
-		return
-	}
-
-	v = int64(byteOrder.Uint64(b))
-	ok = true
-
-	return
-}
-
-func (this *Integer) GetUint8() (v uint8, ok bool) {
-
-	b := siComplete(this.bs, sizeOfUint8+1)
-	if len(b) != sizeOfUint8+1 {
-		return
-	}
-	if b[0] != 0 {
-		return
-	}
-
-	v = b[1]
-	ok = true
-
-	return
-}
-
-func (this *Integer) GetUint16() (v uint16, ok bool) {
-
-	b := siComplete(this.bs, sizeOfUint16+1)
-	if len(b) != sizeOfUint16+1 {
-		return
-	}
-	if b[0] != 0 {
-		return
-	}
-
-	v = byteOrder.Uint16(b[1:])
-	ok = true
-
-	return
-}
-
-func (this *Integer) GetUint32() (v uint32, ok bool) {
-
-	b := siComplete(this.bs, sizeOfUint32+1)
-	if len(b) != sizeOfUint32+1 {
-		return
-	}
-	if b[0] != 0 {
-		return
-	}
-
-	v = byteOrder.Uint32(b[1:])
-	ok = true
-
-	return
-}
-
-func (this *Integer) GetUint64() (v uint64, ok bool) {
-
-	b := siComplete(this.bs, sizeOfUint64+1)
-	if len(b) != sizeOfUint64+1 {
-		return
-	}
-	if b[0] != 0 {
-		return
-	}
-
-	v = byteOrder.Uint64(b[1:])
-	ok = true
-
-	return
-}
-
-func (this *Integer) Bytes() []byte {
-	return this.bs
-}
-
-func (this *Integer) Encode() (bs []byte, err error) {
-
-	if this == nil {
-		err = newError("Integer.Encode(): this is nil")
-		return
-	}
-
-	bs = this.bs
-
-	return
-}
-
-func (this *Integer) Decode(bs []byte) (err error) {
-
-	if this == nil {
-		err = newError("Integer.Decode(): this is nil")
-		return
-	}
-
-	if len(bs) == 0 {
-		err = newError("Integer.Decode(): len data = 0")
-		return
-	}
-
-	this.bs = bs
-
-	return
-}
-
-func (this *Integer) InitRandomInstance(r *rand.Rand) {
-
-}
-*/

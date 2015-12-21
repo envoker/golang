@@ -54,27 +54,6 @@ func ConstructedCheckNode(tn TagNumber, node *Node) (err error) {
 	return
 }
 
-func NewNodeSequence() (*Node, error) {
-
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
-
-	node := new(Node)
-	if err := node.SetType(tagType); err != nil {
-		return nil, err
-	}
-
-	return node, nil
-}
-
-func CheckNodeSequence(node *Node) error {
-
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
-
-	return node.CheckType(tagType)
-}
-
 type Constructed struct {
 	nodes []*Node
 }
