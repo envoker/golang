@@ -198,35 +198,26 @@ func (n *Node) SetType(t TagType) error {
 	return nil
 }
 
-func (n *Node) GetType() (t TagType, err error) {
-
-	if n == nil {
-		err = newError("Node.CheckType(): node is nil")
-		return
-	}
-
-	t = n.t
-	return
+func (n *Node) GetType() TagType {
+	return n.t
 }
 
-func (n *Node) CheckType(t TagType) (err error) {
+func (n *Node) CheckType(t TagType) error {
 
 	if n == nil {
-		err = newError("Node.CheckType(): node is nil")
-		return
+		return newError("Node.CheckType(): node is nil")
 	}
 
-	b, err := IsEqualType(&(n.t), &t)
-	if err != nil {
-		return
+	var (
+		a = &(n.t)
+		b = &(t)
+	)
+
+	if !a.Equal(b) {
+		return newError("Node.CheckType(): is not equal TagType")
 	}
 
-	if !b {
-		err = newError("Node.CheckType(): is not equal")
-		return
-	}
-
-	return
+	return nil
 }
 
 func (n *Node) EncodeLength() (c int) {

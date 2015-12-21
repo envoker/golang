@@ -6,11 +6,11 @@ import (
 	"fmt"
 )
 
-func ConvertToString(p *Node) (s string, err error) {
+func ConvertToString(node *Node) (s string, err error) {
 
 	var buffer bytes.Buffer
 
-	if err = nodeToString(p, &buffer, 0); err != nil {
+	if err = nodeToString(node, &buffer, 0); err != nil {
 		return
 	}
 
@@ -19,7 +19,7 @@ func ConvertToString(p *Node) (s string, err error) {
 	return
 }
 
-func nodeToString(p *Node, buffer *bytes.Buffer, indent int) (err error) {
+func nodeToString(node *Node, buffer *bytes.Buffer, indent int) (err error) {
 
 	indentBuff := make([]byte, indent)
 	for i := 0; i < indent; i++ {
@@ -32,7 +32,7 @@ func nodeToString(p *Node, buffer *bytes.Buffer, indent int) (err error) {
 
 	var className string
 
-	switch p.t.class {
+	switch node.t.class {
 	case CLASS_UNIVERSAL:
 		className = "UNIVERSAL"
 	case CLASS_APPLICATION:
@@ -43,32 +43,32 @@ func nodeToString(p *Node, buffer *bytes.Buffer, indent int) (err error) {
 		className = "PRIVATE"
 	}
 
-	s := fmt.Sprintf("%s(%d):", className, int(p.t.tagNumber))
+	s := fmt.Sprintf("%s(%d):", className, int(node.t.tagNumber))
 	if _, err = buffer.WriteString(s); err != nil {
 		return
 	}
 
-	if p.t.valueType == VT_PRIMITIVE {
+	if node.t.valueType == VT_PRIMITIVE {
 
-		var pPrimitive *Primitive = p.v.(*Primitive)
+		var pPrimitive *Primitive = node.v.(*Primitive)
 
 		buffer.WriteByte('\t')
 
-		s = hex.EncodeToString(pPrimitive.GetBytes())
+		s = hex.EncodeToString(pPrimitive.Bytes())
 		if _, err = buffer.WriteString(s); err != nil {
 			return
 		}
 
 		buffer.WriteByte('\n')
 
-	} else if p.t.valueType == VT_CONSTRUCTED {
+	} else if node.t.valueType == VT_CONSTRUCTED {
 
 		buffer.WriteString("\t{\n")
 
-		var pConstructed *Constructed = p.v.(*Constructed)
+		var pConstructed *Constructed = node.v.(*Constructed)
 
-		for _, node := range pConstructed.nodes {
-			if err = nodeToString(node, buffer, indent+1); err != nil {
+		for _, child := range pConstructed.nodes {
+			if err = nodeToString(child, buffer, indent+1); err != nil {
 				return
 			}
 		}

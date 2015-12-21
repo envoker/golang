@@ -31,47 +31,47 @@ func PrimitiveCheckNode(tn TagNumber, node *Node) (err error) {
 }
 
 type Primitive struct {
-	bs []byte
+	data []byte
 }
 
-func (this *Primitive) GetBytes() []byte {
-	return this.bs
+func (p *Primitive) Bytes() []byte {
+	return p.data
 }
 
-func (this *Primitive) SetBytes(bs []byte) {
-	this.bs = bs
+func (p *Primitive) SetBytes(bs []byte) {
+	p.data = bs
 }
 
-func (this *Primitive) EncodeLength() (n int) {
+func (p *Primitive) EncodeLength() (n int) {
 
-	if this != nil {
-		n = len(this.bs)
+	if p != nil {
+		n = len(p.data)
 	}
 	return
 }
 
-func (this *Primitive) Encode(w io.Writer, length int) (n int, err error) {
+func (p *Primitive) Encode(w io.Writer, length int) (n int, err error) {
 
-	if this == nil {
+	if p == nil {
 		err = newError("Primitive.Encode(): Primitive is nil")
 		return
 	}
 
-	if len(this.bs) != length {
+	if len(p.data) != length {
 		err = newError("Primitive.Encode()")
 		return
 	}
 
-	if n, err = writeFull(w, this.bs); err != nil {
+	if n, err = writeFull(w, p.data); err != nil {
 		return
 	}
 
 	return
 }
 
-func (this *Primitive) Decode(r io.Reader, length int) (n int, err error) {
+func (p *Primitive) Decode(r io.Reader, length int) (n int, err error) {
 
-	if this == nil {
+	if p == nil {
 		err = newError("Primitive.Decode(): Primitive is nil")
 		return
 	}
@@ -93,19 +93,15 @@ func (this *Primitive) Decode(r io.Reader, length int) (n int, err error) {
 		return
 	}
 
-	this.SetBytes(bs)
+	p.SetBytes(bs)
 
 	return
 }
 
+/*
 type Boolean bool
 
 func (b *Boolean) Encode() (data []byte, err error) {
-
-	if b == nil {
-		err = newError("Boolean.Encode(): Boolean is nil")
-		return
-	}
 
 	if *b {
 		data = []byte{0xFF}
@@ -126,6 +122,7 @@ func (b *Boolean) Decode(data []byte) error {
 
 	return nil
 }
+*/
 
 type String string
 
@@ -135,14 +132,53 @@ func (s *String) Encode() (data []byte, err error) {
 	return
 }
 
-func (s *String) Decode(data []byte) (err error) {
+func (s *String) Decode(data []byte) error {
 
 	if !utf8.Valid(data) {
-		err = newError("String.Decode(): data is not utf-8 string")
-		return
+		return newError("String.Decode(): data is not utf-8 string")
 	}
 
 	*s = String(data)
 
-	return
+	return nil
+}
+
+func (p *Primitive) SetInt(x int64) {
+
+	data := make([]byte, sizeOfUint64)
+	byteOrder.PutUint64(data, uint64(x))
+
+	p.data = intBytesTrimm(data)
+}
+
+func (p *Primitive) SetUint(x uint64) {
+
+	data := make([]byte, sizeOfUint64+1)
+	data[0] = 0x00
+	byteOrder.PutUint64(data[1:], x)
+
+	p.data = intBytesTrimm(data)
+}
+
+func (p *Primitive) Int() int64 {
+
+	data := intBytesComplete(p.data, sizeOfUint64)
+	if len(data) < sizeOfUint64 {
+		return 0
+	}
+
+	return int64(byteOrder.Uint64(data))
+}
+
+func (p *Primitive) Uint() uint64 {
+
+	data := intBytesComplete(p.data, sizeOfUint64+1)
+	if len(data) < sizeOfUint64+1 {
+		return 0
+	}
+	if data[0] != 0 {
+		return 0
+	}
+
+	return byteOrder.Uint64(data[1:])
 }

@@ -13,63 +13,56 @@ type TagType struct {
 }
 
 func NewTagType(class Class, valueType ValueType, tagNumber TagNumber) *TagType {
-
-	p := new(TagType)
-
-	p.class = class
-	p.valueType = valueType
-	p.tagNumber = tagNumber
-
-	return p
+	return &TagType{class, valueType, tagNumber}
 }
 
-func (this *TagType) String() string {
+func (t *TagType) String() string {
 	const format = `{ "Class": "%s", "Constructed": %t, "Number": %d }`
-	return fmt.Sprintf(format, this.class.String(),
-		(this.valueType == VT_CONSTRUCTED),
-		this.tagNumber)
+	return fmt.Sprintf(format, t.class.String(),
+		(t.valueType == VT_CONSTRUCTED),
+		t.tagNumber)
 }
 
-func (this *TagType) GetTagNumber() TagNumber {
+func (t *TagType) GetTagNumber() TagNumber {
 
-	return this.tagNumber
+	return t.tagNumber
 }
 
-func (val TagType) IsValid() bool {
+func (t TagType) IsValid() bool {
 
-	if !val.class.IsValid() {
+	if !t.class.IsValid() {
 		return false
 	}
 
-	if !val.valueType.IsValid() {
+	if !t.valueType.IsValid() {
 		return false
 	}
 
 	return true
 }
 
-func (this *TagType) Init(class Class, valueType ValueType, tagNumber TagNumber) {
-	if this != nil {
+func (t *TagType) Init(class Class, valueType ValueType, tagNumber TagNumber) {
+	if t != nil {
 
-		this.class = class
-		this.valueType = valueType
-		this.tagNumber = tagNumber
+		t.class = class
+		t.valueType = valueType
+		t.tagNumber = tagNumber
 	}
 }
 
-func (this *TagType) Check(class Class, valueType ValueType, tagNumber TagNumber) (err error) {
+func (t *TagType) Check(class Class, valueType ValueType, tagNumber TagNumber) (err error) {
 
-	if this.class != class {
+	if t.class != class {
 		err = newError("TagType.Check(): class not equal")
 		return
 	}
 
-	if this.valueType != valueType {
+	if t.valueType != valueType {
 		err = newError("TagType.Check(): valueType not equal")
 		return
 	}
 
-	if this.tagNumber != tagNumber {
+	if t.tagNumber != tagNumber {
 		err = newError("TagType.Check(): tagNumber not equal")
 		return
 	}
@@ -77,9 +70,9 @@ func (this *TagType) Check(class Class, valueType ValueType, tagNumber TagNumber
 	return
 }
 
-func (this *TagType) EncodeLength() (n int) {
+func (t *TagType) EncodeLength() (n int) {
 
-	tag_number := this.tagNumber
+	tag_number := t.tagNumber
 
 	switch {
 
@@ -100,7 +93,7 @@ func (this *TagType) EncodeLength() (n int) {
 	return
 }
 
-func (this *TagType) Encode(w io.Writer) (n int, err error) {
+func (t *TagType) Encode(w io.Writer) (n int, err error) {
 
 	var (
 		b          byte
@@ -109,17 +102,17 @@ func (this *TagType) Encode(w io.Writer) (n int, err error) {
 		shift      uint
 	)
 
-	if this == nil {
+	if t == nil {
 		err = newError("Type is nil")
 		return
 	}
 
-	if !this.IsValid() {
+	if !t.IsValid() {
 		err = newError("TagType.Encode(): this is not valid")
 		return
 	}
 
-	switch this.class {
+	switch t.class {
 	case CLASS_UNIVERSAL:
 		b |= 0x00
 	case CLASS_APPLICATION:
@@ -130,14 +123,14 @@ func (this *TagType) Encode(w io.Writer) (n int, err error) {
 		b |= 0xC0
 	}
 
-	switch this.valueType {
+	switch t.valueType {
 	case VT_PRIMITIVE:
 		b |= 0x00
 	case VT_CONSTRUCTED:
 		b |= 0x20
 	}
 
-	tag_number = int(this.tagNumber)
+	tag_number = int(t.tagNumber)
 
 	if tag_number < 0x1F {
 
@@ -187,14 +180,14 @@ func (this *TagType) Encode(w io.Writer) (n int, err error) {
 	return
 }
 
-func (this *TagType) Decode(r io.Reader) (n int, err error) {
+func (t *TagType) Decode(r io.Reader) (n int, err error) {
 
 	var (
 		b          byte
 		tag_number int
 	)
 
-	if this == nil {
+	if t == nil {
 		err = newError("Type is nil")
 		return
 	}
@@ -205,25 +198,25 @@ func (this *TagType) Decode(r io.Reader) (n int, err error) {
 
 	switch b & 0xC0 {
 	case 0x00:
-		this.class = CLASS_UNIVERSAL
+		t.class = CLASS_UNIVERSAL
 	case 0x40:
-		this.class = CLASS_APPLICATION
+		t.class = CLASS_APPLICATION
 	case 0x80:
-		this.class = CLASS_CONTEXT_SPECIFIC
+		t.class = CLASS_CONTEXT_SPECIFIC
 	case 0xC0:
-		this.class = CLASS_PRIVATE
+		t.class = CLASS_PRIVATE
 	}
 
 	switch b & 0x20 {
 	case 0x00:
-		this.valueType = VT_PRIMITIVE
+		t.valueType = VT_PRIMITIVE
 	case 0x20:
-		this.valueType = VT_CONSTRUCTED
+		t.valueType = VT_CONSTRUCTED
 	}
 
 	if (b & 0x1F) != 0x1F {
 
-		this.tagNumber = TagNumber(b & 0x1F)
+		t.tagNumber = TagNumber(b & 0x1F)
 		n = 1
 		return
 	}
@@ -236,7 +229,7 @@ func (this *TagType) Decode(r io.Reader) (n int, err error) {
 
 		tag_number = (tag_number << 7) | int(b&0x7F)
 		if (b & 0x80) == 0x00 {
-			this.tagNumber = TagNumber(tag_number)
+			t.tagNumber = TagNumber(tag_number)
 			n = i + 2
 			return
 		}
@@ -245,37 +238,36 @@ func (this *TagType) Decode(r io.Reader) (n int, err error) {
 	return
 }
 
-func (this *TagType) InitRandomInstance(r *rand.Rand) {
+func (t *TagType) InitRandomInstance(r *rand.Rand) {
 
 	//	classType
 	{
-		n := r.Intn(4)
-		switch n {
+
+		switch n := r.Intn(4); n {
 		case 0:
-			this.class = CLASS_UNIVERSAL
+			t.class = CLASS_UNIVERSAL
 		case 1:
-			this.class = CLASS_APPLICATION
+			t.class = CLASS_APPLICATION
 		case 2:
-			this.class = CLASS_CONTEXT_SPECIFIC
+			t.class = CLASS_CONTEXT_SPECIFIC
 		case 3:
-			this.class = CLASS_PRIVATE
+			t.class = CLASS_PRIVATE
 		}
 	}
 
 	//	valueType
 	{
 		if r.Intn(100) < 50 {
-			this.valueType = VT_PRIMITIVE
+			t.valueType = VT_PRIMITIVE
 		} else {
-			this.valueType = VT_CONSTRUCTED
+			t.valueType = VT_CONSTRUCTED
 		}
 	}
 
 	//	tagNumber
 	{
 		number := 0
-		countBytes := r.Intn(5)
-		switch countBytes {
+		switch countBytes := r.Intn(5); countBytes {
 		case 0:
 			number = r.Intn(0x80)
 		case 1:
@@ -287,26 +279,23 @@ func (this *TagType) InitRandomInstance(r *rand.Rand) {
 		default:
 			number = r.Intn(0x7FFFFFFF)
 		}
-		this.tagNumber = TagNumber(number)
+		t.tagNumber = TagNumber(number)
 	}
 }
 
-func IsEqualType(a, b *TagType) (bool, error) {
+func (a *TagType) Equal(b *TagType) bool {
 
-	if (a == nil) || (b == nil) {
-
-		err := newError("\"a\" or \"b\" is nil")
-		return false, err
+	if a.class != b.class {
+		return false
 	}
 
-	switch {
-	case (a.class != b.class):
-		return false, nil
-	case (a.valueType != b.valueType):
-		return false, nil
-	case (a.tagNumber != b.tagNumber):
-		return false, nil
+	if a.valueType != b.valueType {
+		return false
 	}
 
-	return true, nil
+	if a.tagNumber != b.tagNumber {
+		return false
+	}
+
+	return true
 }

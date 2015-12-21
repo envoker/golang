@@ -7,36 +7,28 @@ import (
 
 func TestLengthEncodeDecode(t *testing.T) {
 
-	var (
-		err    error
-		n1, n2 int
-		l1, l2 Length
-	)
-
 	r := newRand()
-
 	buffer := new(bytes.Buffer)
+	var l1, l2 Length
 
-	for i := 0; i < 10000000; i++ {
+	for i := 0; i < 100000; i++ {
+
+		l1 = Length(r.Int31() >> uint(r.Intn(30)))
 
 		buffer.Reset()
-		l1 = Length(r.Intn(123097987))
 
-		n1, err = l1.Encode(buffer)
+		n1, err := l1.Encode(buffer)
 		if err != nil {
-			t.Errorf("Encode Error: iter %d", i)
-			return
+			t.Fatalf("Encode: iter %d", i)
 		}
 
-		n2, err = l2.Decode(buffer)
+		n2, err := l2.Decode(buffer)
 		if err != nil {
-			t.Errorf("Decode Error: iter %d", i)
-			return
+			t.Fatalf("Decode: iter %d", i)
 		}
 
 		if (n1 != n2) || (l1 != l2) {
-			t.Errorf("Equal Error: iter %d", i)
-			return
+			t.Fatalf("Equal: iter %d", i)
 		}
 	}
 }

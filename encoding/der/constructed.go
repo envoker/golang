@@ -67,7 +67,7 @@ func NewNodeSequence() (*Node, error) {
 	return node, nil
 }
 
-func SequenceCheckNode(node *Node) error {
+func CheckNodeSequence(node *Node) error {
 
 	var tagType TagType
 	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)

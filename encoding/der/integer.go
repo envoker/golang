@@ -2,7 +2,6 @@ package der
 
 import (
 	"encoding/binary"
-	"math/rand"
 )
 
 var byteOrder = binary.BigEndian
@@ -12,7 +11,7 @@ func byteSign(b byte) bool {
 	return ((b & 0x80) != 0)
 }
 
-func siTrimm(bs []byte) []byte {
+func intBytesTrimm(bs []byte) []byte {
 
 	size := len(bs)
 	if size > 0 {
@@ -44,7 +43,7 @@ func siTrimm(bs []byte) []byte {
 	return bs
 }
 
-func siComplete(bs []byte, n int) []byte {
+func intBytesComplete(bs []byte, n int) []byte {
 
 	size := len(bs)
 	if size < n {
@@ -68,6 +67,7 @@ func siComplete(bs []byte, n int) []byte {
 	return bs
 }
 
+/*
 type Integer struct {
 	bs []byte
 }
@@ -330,3 +330,4 @@ func (this *Integer) Decode(bs []byte) (err error) {
 func (this *Integer) InitRandomInstance(r *rand.Rand) {
 
 }
+*/
