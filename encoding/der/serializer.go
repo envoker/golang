@@ -78,45 +78,6 @@ func nullSerialize(v reflect.Value) (*Node, error) {
 	return node, nil
 }
 
-func boolSerialize(v reflect.Value) (*Node, error) {
-
-	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_BOOLEAN)
-	if err != nil {
-		return nil, err
-	}
-
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetBool(v.Bool())
-
-	return node, nil
-}
-
-func uintSerialize(v reflect.Value) (*Node, error) {
-
-	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
-	if err != nil {
-		return nil, err
-	}
-
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetUint(v.Uint())
-
-	return node, nil
-}
-
-func intSerialize(v reflect.Value) (*Node, error) {
-
-	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
-	if err != nil {
-		return nil, err
-	}
-
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetInt(v.Int())
-
-	return node, nil
-}
-
 func float32Serialize(v reflect.Value) (*Node, error) {
 
 	return nil, nil
@@ -197,8 +158,8 @@ func structFieldSerialize(container Container, v reflect.Value, finfo *fieldInfo
 			return err
 		}
 
-		encodeFn := getSerializeFunc(v.Type())
-		child, err := encodeFn(v)
+		fn := getSerializeFunc(v.Type())
+		child, err := fn(v)
 		if err != nil {
 			return err
 		}
@@ -213,12 +174,12 @@ func structFieldSerialize(container Container, v reflect.Value, finfo *fieldInfo
 }
 
 type ptrSerializer struct {
-	encodeFunc serializeFunc
+	fn serializeFunc
 }
 
 func newPtrSerialize(t reflect.Type) serializeFunc {
-	e := ptrSerializer{getSerializeFunc(t.Elem())}
-	return e.encode
+	s := ptrSerializer{getSerializeFunc(t.Elem())}
+	return s.encode
 }
 
 func (p *ptrSerializer) encode(v reflect.Value) (*Node, error) {
@@ -227,16 +188,16 @@ func (p *ptrSerializer) encode(v reflect.Value) (*Node, error) {
 		return nullSerialize(v)
 	}
 
-	return p.encodeFunc(v.Elem())
+	return p.fn(v.Elem())
 }
 
 type arraySerializer struct {
-	encodeFunc serializeFunc
+	fn serializeFunc
 }
 
 func newArraySerialize(t reflect.Type) serializeFunc {
-	e := arraySerializer{getSerializeFunc(t.Elem())}
-	return e.encode
+	s := arraySerializer{getSerializeFunc(t.Elem())}
+	return s.encode
 }
 
 func (p *arraySerializer) encode(v reflect.Value) (*Node, error) {
@@ -255,7 +216,7 @@ func (p *arraySerializer) encode(v reflect.Value) (*Node, error) {
 	n := v.Len()
 	for i := 0; i < n; i++ {
 
-		child, err := p.encodeFunc(v.Index(i))
+		child, err := p.fn(v.Index(i))
 		if err != nil {
 			return nil, err
 		}

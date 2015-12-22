@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand"
@@ -13,7 +14,10 @@ import (
 
 func main() {
 
-	if err := derHex(); err != nil {
+	fn := testIntDER
+	//fn := testIntJSON
+
+	if err := fn(); err != nil {
 		fmt.Println(err)
 	}
 }
@@ -118,6 +122,133 @@ func TestTagType() error {
 			return errors.New(fmt.Sprintf("Equal Error: iter %d", i))
 		}
 	}
+
+	return nil
+}
+
+type uint64Sample struct {
+	val  uint64
+	data []byte
+}
+
+func newUint64Sample(v uint64, s string) *uint64Sample {
+	s = onlyHex(s)
+	data, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err.Error())
+	}
+	return &uint64Sample{v, data}
+}
+
+func testUint64() error {
+
+	var as = []uint64{0, 1, 2}
+
+	var x uint64 = 4
+	for i := 0; i < 64; i++ {
+
+		as = append(as, x-1)
+		as = append(as, x)
+		as = append(as, x+1)
+
+		x *= 2
+	}
+
+	for _, a := range as {
+
+		data, err := der.Marshal(a)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("newUint64Sample(%d, \"% X\"),\n", a, data)
+	}
+
+	return nil
+}
+
+type int64Sample struct {
+	val  int64
+	data []byte
+}
+
+func newInt64Sample(v int64, s string) *int64Sample {
+	s = onlyHex(s)
+	data, err := hex.DecodeString(s)
+	if err != nil {
+		panic(err.Error())
+	}
+	return &int64Sample{v, data}
+}
+
+func testInt64() error {
+
+	var as = []int64{0, 1, -1, 2, -2}
+
+	var x int64 = 4
+	for i := 0; i < 64; i++ {
+
+		as = append(as, x-1)
+		as = append(as, -(x - 1))
+		as = append(as, x)
+		as = append(as, -x)
+		as = append(as, x+1)
+		as = append(as, -(x + 1))
+
+		x *= 2
+	}
+
+	for _, a := range as {
+
+		data, err := der.Marshal(a)
+		if err != nil {
+			return err
+		}
+
+		fmt.Printf("newInt64Sample(%d, \"% X\"),\n", a, data)
+	}
+
+	return nil
+}
+
+func testIntDER() error {
+
+	var a int64 = -100000
+
+	data, err := der.Marshal(a)
+	if err != nil {
+		return err
+	}
+
+	var b int16
+
+	err = der.Unmarshal(data, &b)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(b)
+
+	return nil
+}
+
+func testIntJSON() error {
+
+	var a int = -108987
+
+	data, err := json.Marshal(a)
+	if err != nil {
+		return err
+	}
+
+	var b uint8
+
+	err = json.Unmarshal(data, &b)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(b)
 
 	return nil
 }

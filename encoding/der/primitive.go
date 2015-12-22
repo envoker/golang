@@ -81,17 +81,11 @@ func (p *Primitive) Decode(r io.Reader, length int) (n int, err error) {
 }
 
 func (p *Primitive) SetBool(x bool) {
-	p.data = []byte{0}
-	if x {
-		p.data[0] = 0xFF
-	}
+	p.data = boolEncode(x)
 }
 
-func (p *Primitive) Bool() bool {
-	if len(p.data) != 1 {
-		panic("value not bool")
-	}
-	return (p.data[0] != 0)
+func (p *Primitive) GetBool() (bool, error) {
+	return boolDecode(p.data)
 }
 
 func (p *Primitive) SetInt(x int64) {
@@ -102,11 +96,11 @@ func (p *Primitive) SetUint(x uint64) {
 	p.data = uintEncode(x)
 }
 
-func (p *Primitive) Int() int64 {
+func (p *Primitive) GetInt() (int64, error) {
 	return intDecode(p.data)
 }
 
-func (p *Primitive) Uint() uint64 {
+func (p *Primitive) GetUint() (uint64, error) {
 	return uintDecode(p.data)
 }
 

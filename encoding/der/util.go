@@ -17,6 +17,12 @@ const (
 	sizeOfUint64 = 8
 )
 
+const (
+	maxUint = ^uint(0)
+	maxInt  = int(maxUint >> 1)
+	minInt  = -maxInt - 1
+)
+
 func writeByte(w io.Writer, b byte) error {
 
 	var bs [sizeOfUint8]byte

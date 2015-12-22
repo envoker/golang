@@ -70,54 +70,6 @@ func funcDeserialize(v reflect.Value, node *Node) error {
 	return d.DeserializeDER(node)
 }
 
-func boolDeserialize(v reflect.Value, node *Node) error {
-
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_BOOLEAN)
-
-	err := node.CheckType(tagType)
-	if err != nil {
-		return err
-	}
-
-	primitive := node.GetValue().(*Primitive)
-	v.SetBool(primitive.Bool())
-
-	return nil
-}
-
-func uintDeserialize(v reflect.Value, node *Node) error {
-
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
-
-	err := node.CheckType(tagType)
-	if err != nil {
-		return err
-	}
-
-	primitive := node.GetValue().(*Primitive)
-	v.SetUint(primitive.Uint())
-
-	return nil
-}
-
-func intDeserialize(v reflect.Value, node *Node) error {
-
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
-
-	err := node.CheckType(tagType)
-	if err != nil {
-		return err
-	}
-
-	primitive := node.GetValue().(*Primitive)
-	v.SetInt(primitive.Int())
-
-	return nil
-}
-
 func float32Deserialize(v reflect.Value, node *Node) error {
 
 	return nil
@@ -142,7 +94,7 @@ func stringDeserialize(v reflect.Value, node *Node) error {
 	data := primitive.Bytes()
 
 	if !utf8.Valid(data) {
-		return errors.New("wrong utf-8 string")
+		return ErrorUnmarshalString{data, "wrong utf-8 format"}
 	}
 
 	v.SetString(string(data))
@@ -216,15 +168,15 @@ func structFieldDeserialize(container Container, v reflect.Value, finfo *fieldIn
 
 		valueMake(v)
 
-		decodeFunc := getDeserializeFunc(v.Type())
-		return decodeFunc(v, child)
+		fn := getDeserializeFunc(v.Type())
+		return fn(v, child)
 	}
 
 	return errors.New("tag is nil")
 }
 
 type ptrDeserializer struct {
-	decodeFunc deserializeFunc
+	fn deserializeFunc
 }
 
 func newPtrDeserialize(t reflect.Type) deserializeFunc {
@@ -235,13 +187,13 @@ func newPtrDeserialize(t reflect.Type) deserializeFunc {
 func (p *ptrDeserializer) decode(v reflect.Value, node *Node) error {
 
 	if v.IsNil() {
-		return fmt.Errorf("der2: Decode(nil %s)", v.Type())
+		return fmt.Errorf("der: Decode(nil %s)", v.Type())
 	}
 
-	return ptrValueDeserialize(v.Elem(), node)
+	return ptrValueDeserialize(v.Elem(), node, p.fn)
 }
 
-func ptrValueDeserialize(v reflect.Value, node *Node) error {
+func ptrValueDeserialize(v reflect.Value, node *Node, fn deserializeFunc) error {
 
 	var tagType TagType
 	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_NULL)
@@ -258,12 +210,11 @@ func ptrValueDeserialize(v reflect.Value, node *Node) error {
 		}
 	}
 
-	decodeFunc := getDeserializeFunc(v.Type())
-	return decodeFunc(v, node)
+	return fn(v, node)
 }
 
 type arrayDeserializer struct {
-	decodeFunc deserializeFunc
+	fn deserializeFunc
 }
 
 func newArrayDeserialize(t reflect.Type) deserializeFunc {
