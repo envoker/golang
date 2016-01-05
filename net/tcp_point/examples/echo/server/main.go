@@ -9,18 +9,18 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/envoker/golang/net/tcppo"
-	"github.com/envoker/golang/net/tcppo/examples/echo"
+	"github.com/envoker/golang/net/tcp_point"
+	"github.com/envoker/golang/net/tcp_point/examples/echo"
 )
 
 func main() {
 
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
-	p, err := tcppo.New(
-		tcppo.Config{
+	p, err := tcp_point.New(
+		tcp_point.Config{
 			Address:          ":8933",
-			PointType:        tcppo.POINT_TYPE_SERVER,
+			PointType:        tcp_point.POINT_TYPE_SERVER,
 			SendChanLimit:    20,
 			ReceiveChanLimit: 20,
 		},
@@ -59,7 +59,7 @@ func (cb *Callback) OnDisconnect(remoteAddr string) {
 	fmt.Println("client disconnect:", remoteAddr)
 }
 
-func (cb *Callback) OnReceive(packet tcppo.Packet, aw tcppo.AsyncWriter) bool {
+func (cb *Callback) OnReceive(packet tcp_point.Packet, aw tcp_point.AsyncWriter) bool {
 
 	p := packet.(*echo.Packet)
 	if p == nil {

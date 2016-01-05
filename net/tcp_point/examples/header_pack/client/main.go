@@ -5,16 +5,16 @@ import (
 	"log"
 	"time"
 
-	"github.com/envoker/golang/net/tcppo"
-	"github.com/envoker/golang/net/tcppo/examples/header_pack"
+	"github.com/envoker/golang/net/tcp_point"
+	"github.com/envoker/golang/net/tcp_point/examples/header_pack"
 )
 
 func main() {
 
-	p, err := tcppo.New(
-		tcppo.Config{
+	p, err := tcp_point.New(
+		tcp_point.Config{
 			Address:   "localhost:1214",
-			PointType: tcppo.POINT_TYPE_CLIENT,
+			PointType: tcp_point.POINT_TYPE_CLIENT,
 		},
 		&Callback{},
 		header_pack.Protocol{},
@@ -43,7 +43,7 @@ func (cb *Callback) OnDisconnect(remoteAddr string) {
 	fmt.Println("disconnect")
 }
 
-func (cb *Callback) OnReceive(packet tcppo.Packet, aw tcppo.AsyncWriter) bool {
+func (cb *Callback) OnReceive(packet tcp_point.Packet, aw tcp_point.AsyncWriter) bool {
 
 	p := packet.(*header_pack.Packet)
 	if p != nil {

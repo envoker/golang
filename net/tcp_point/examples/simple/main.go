@@ -5,7 +5,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/envoker/golang/net/tcppo"
+	"github.com/envoker/golang/net/tcp_point"
 )
 
 func main() {
@@ -24,10 +24,10 @@ func client(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	p, err := tcppo.New(
-		tcppo.Config{
+	p, err := tcp_point.New(
+		tcp_point.Config{
 			Address:   "localhost:8900",
-			PointType: tcppo.POINT_TYPE_CLIENT,
+			PointType: tcp_point.POINT_TYPE_CLIENT,
 		},
 		&Callback{"client"},
 		Protocol{},
@@ -48,12 +48,12 @@ func server(wg *sync.WaitGroup) {
 
 	defer wg.Done()
 
-	config := tcppo.Config{
+	config := tcp_point.Config{
 		Address:   ":8900",
-		PointType: tcppo.POINT_TYPE_SERVER,
+		PointType: tcp_point.POINT_TYPE_SERVER,
 	}
 
-	p, err := tcppo.New(config, &Callback{"server"}, Protocol{})
+	p, err := tcp_point.New(config, &Callback{"server"}, Protocol{})
 	if err != nil {
 		log.Fatal(err.Error())
 	}

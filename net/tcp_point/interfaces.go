@@ -1,4 +1,4 @@
-package tcppo
+package tcp_point
 
 import (
 	"net"

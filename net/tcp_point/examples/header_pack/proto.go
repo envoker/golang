@@ -8,7 +8,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/envoker/golang/net/tcppo"
+	"github.com/envoker/golang/net/tcp_point"
 )
 
 const preambleValue = 0x73F5CD1A
@@ -49,7 +49,7 @@ func (p *Packet) Serialize() []byte {
 
 type Protocol struct{}
 
-func (Protocol) ReadPacket(conn net.Conn) (tcppo.Packet, error) {
+func (Protocol) ReadPacket(conn net.Conn) (tcp_point.Packet, error) {
 
 	var h header
 

@@ -5,7 +5,7 @@ import (
 	"io"
 	"net"
 
-	"github.com/envoker/golang/net/tcppo"
+	"github.com/envoker/golang/net/tcp_point"
 )
 
 const (
@@ -40,7 +40,7 @@ func (p *Packet) Bytes() []byte {
 
 type Protocol struct{}
 
-func (Protocol) ReadPacket(conn net.Conn) (tcppo.Packet, error) {
+func (Protocol) ReadPacket(conn net.Conn) (tcp_point.Packet, error) {
 
 	data := make([]byte, sizeOfUint16)
 	if _, err := io.ReadFull(conn, data); err != nil {

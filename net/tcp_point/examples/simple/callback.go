@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/envoker/golang/net/tcppo"
+	"github.com/envoker/golang/net/tcp_point"
 )
 
 type Callback struct {
@@ -18,7 +18,7 @@ func (cb *Callback) OnDisconnect(remoteAddr string) {
 	fmt.Println(cb.name, "disconnect:", remoteAddr)
 }
 
-func (cb *Callback) OnReceive(packet tcppo.Packet, aw tcppo.AsyncWriter) bool {
+func (cb *Callback) OnReceive(packet tcp_point.Packet, aw tcp_point.AsyncWriter) bool {
 
 	p := packet.(*Packet)
 	if p == nil {
