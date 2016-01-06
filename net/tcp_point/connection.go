@@ -1,6 +1,7 @@
 package tcp_point
 
 import (
+	"io"
 	"net"
 	"sync"
 	"sync/atomic"
@@ -104,9 +105,14 @@ func (c *connection) writeLoop() {
 					return
 				}
 
-				c.conn.SetWriteDeadline(time.Now().Add(escapeTime))
+				err := c.conn.SetWriteDeadline(time.Now().Add(escapeTime))
+				if err != nil {
+					c.point.callback.OnError(err)
+					return
+				}
 
-				if _, err := c.conn.Write(p.Serialize()); err != nil {
+				_, err = c.conn.Write(p.Serialize())
+				if err != nil {
 
 					/*
 						if !checkTimeout(err) {
@@ -130,6 +136,8 @@ func (c *connection) readLoop() {
 		c.point.wg.Done()
 	}()
 
+	escapeTime := 3 * time.Second
+
 	for {
 		select {
 		case <-c.point.quit:
@@ -141,11 +149,27 @@ func (c *connection) readLoop() {
 		default:
 		}
 
-		p, err := c.point.protocol.ReadPacket(c.conn)
+		err := c.conn.SetReadDeadline(time.Now().Add(escapeTime))
 		if err != nil {
+			c.point.callback.OnError(err)
 			return
 		}
 
-		c.point.packetReceiveChan <- p
+		p, err := c.point.protocol.ReadPacket(c.conn)
+		if err == nil {
+			c.point.packetReceiveChan <- p
+		} else {
+			if err == io.EOF {
+				return
+			}
+			if netErr, ok := err.(net.Error); ok {
+				if !netErr.Timeout() {
+					return
+				}
+			} else {
+				c.point.callback.OnError(err)
+				return
+			}
+		}
 	}
 }

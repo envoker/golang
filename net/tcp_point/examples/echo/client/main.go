@@ -16,7 +16,7 @@ func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	n := 100000
+	n := 1000
 
 	cb := NewCallback(n)
 
