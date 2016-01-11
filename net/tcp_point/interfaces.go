@@ -14,6 +14,7 @@ type Protocol interface {
 }
 
 type AsyncWriter interface {
+	WriteAvailable() bool
 	WritePacket(p Packet, d time.Duration) error
 }
 

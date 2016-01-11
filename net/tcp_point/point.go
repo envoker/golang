@@ -4,6 +4,7 @@ import (
 	"errors"
 	"net"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
@@ -76,6 +77,10 @@ func (point *Point) Close() error {
 	close(point.packetSendChan)
 
 	return nil
+}
+
+func (point *Point) WriteAvailable() bool {
+	return atomic.LoadInt32(point.activeFlag) != 0
 }
 
 func (point *Point) WritePacket(packet Packet, d time.Duration) error {
