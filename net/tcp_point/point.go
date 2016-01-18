@@ -79,7 +79,7 @@ func (point *Point) Close() error {
 	return nil
 }
 
-func (point *Point) WriteAvailable() bool {
+func (point *Point) IsConnected() bool {
 	return atomic.LoadInt32(point.activeFlag) != 0
 }
 
@@ -102,7 +102,7 @@ func (point *Point) WritePacket(packet Packet, d time.Duration) error {
 			return nil
 
 		case <-time.After(d):
-			return errors.New("asyncWritePacket: time after")
+			return errors.New("write packet: timeout")
 		}
 	}
 }

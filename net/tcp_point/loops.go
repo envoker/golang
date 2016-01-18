@@ -2,7 +2,6 @@ package tcp_point
 
 import (
 	"net"
-	"sync/atomic"
 	"time"
 )
 
@@ -19,22 +18,18 @@ func loopListener(listener *net.TCPListener, point *Point) {
 		select {
 		case <-point.quit:
 			return
-
 		default:
 		}
 
-		if atomic.LoadInt32(point.activeFlag) == 0 {
-
+		if point.IsConnected() {
+			time.Sleep(duration)
+		} else {
 			listener.SetDeadline(time.Now().Add(duration))
-
 			conn, err := listener.AcceptTCP()
 			if err == nil {
 				c := newConnection(conn, point)
 				c.Do()
 			}
-
-		} else {
-			time.Sleep(duration)
 		}
 	}
 }
@@ -51,20 +46,17 @@ func loopDial(address string, point *Point) {
 		select {
 		case <-point.quit:
 			return
-
 		default:
 		}
 
-		if atomic.LoadInt32(point.activeFlag) == 0 {
-
+		if point.IsConnected() {
+			time.Sleep(duration)
+		} else {
 			conn, err := net.DialTimeout("tcp", address, duration)
 			if err == nil {
 				c := newConnection(conn, point)
 				c.Do()
 			}
-
-		} else {
-			time.Sleep(duration)
 		}
 	}
 }
