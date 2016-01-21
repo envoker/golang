@@ -11,6 +11,7 @@ func main() {
 	exampleLogStdout()
 	exampleLogOff()
 	exampleLogFile()
+	exampleLogAscii()
 }
 
 func useLogger(logger *logl.Logger) {
@@ -44,11 +45,11 @@ func exampleLogOff() {
 	useLogger(logger)
 }
 
-func exampleLogFile() error {
+func exampleLogFile() {
 
 	file, err := os.OpenFile("./test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
-		return err
+		return
 	}
 	defer file.Close()
 
@@ -58,6 +59,16 @@ func exampleLogFile() error {
 	logger := logl.New(w, logl.LEVEL_DEBUG, logl.Ldate|logl.Lmicroseconds)
 
 	useLogger(logger)
+}
 
-	return nil
+func exampleLogAscii() {
+
+	logger := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ltime)
+
+	data := make([]byte, 128)
+	for i := range data {
+		data[i] = byte(i)
+	}
+
+	logger.Debug(string(data))
 }
