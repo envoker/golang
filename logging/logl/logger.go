@@ -134,7 +134,7 @@ func (l *Logger) write(level Level, m string) error {
 
 	data = append_level(data, level)
 	data = append_time(data, l.flag)
-	data = append_message_v1(data, []byte(m))
+	data = append_message(data, m)
 
 	l.buf = data
 
@@ -199,87 +199,9 @@ func append_time(data []byte, flag int) []byte {
 	return data
 }
 
-func append_message_v1(data []byte, message []byte) []byte {
-
-	const hex = "0123456789abcdef"
-
-	for _, b := range message {
-
-		if b < 128 {
-
-			if b < 32 {
-				switch b {
-				case '\n':
-					data = append(data, '\\', 'n')
-				case '\r':
-					data = append(data, '\\', 'r')
-				case '\t':
-					data = append(data, '\\', 't')
-				case '\f':
-					data = append(data, '\\', 'f')
-				case '\v':
-					data = append(data, '\\', 'v')
-				default:
-					data = append(data, '\\', 'x', hex[b>>4], hex[b&0x0F])
-				}
-			} else {
-				switch b {
-				case '\\':
-					data = append(data, '\\', '\\')
-				case 127:
-					data = append(data, '\\', 'x', hex[b>>4], hex[b&0x0F])
-				default:
-					data = append(data, b)
-				}
-			}
-		} else {
-			data = append(data, b)
-		}
-	}
-
+func append_message(data []byte, m string) []byte {
+	data = append(data, m...)
 	data = append(data, '\n')
-
-	return data
-}
-
-func append_message_v2(data []byte, m string) []byte {
-
-	const hex = "0123456789abcdef"
-
-	bs := []byte(m)
-
-	for _, b := range bs {
-
-		if b < 128 {
-
-			switch b {
-			case '\\':
-				data = append(data, '\\', '\\')
-			case '\n':
-				data = append(data, '\\', 'n')
-			case '\r':
-				data = append(data, '\\', 'r')
-			case '\t':
-				data = append(data, '\\', 't')
-			case '\f':
-				data = append(data, '\\', 'f')
-			case '\v':
-				data = append(data, '\\', 'v')
-
-			default:
-				if (b < 32) || (b == 127) {
-					data = append(data, '\\', 'x', hex[b>>4], hex[b&0x0F])
-				} else {
-					data = append(data, b)
-				}
-			}
-		} else {
-			data = append(data, b)
-		}
-	}
-
-	data = append(data, '\n')
-
 	return data
 }
 

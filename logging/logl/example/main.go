@@ -14,40 +14,36 @@ func main() {
 	exampleLogAscii()
 }
 
-func useLogger(logger *logl.Logger) {
+func useLogger(l *logl.Logger) {
 
-	logger.Fatal("fatal message")
-	logger.Error("error message")
-	logger.Warning("warning message")
-	logger.Info("info message")
-	logger.Debug("debug message")
-	logger.Trace("trace message")
+	l.Fatal("fatal message")
+	l.Error("error message")
+	l.Warning("warning message")
+	l.Info("info message")
+	l.Debug("debug message")
+	l.Trace("trace message")
 
-	logger.Fatalf("fatal message: %d", 1)
-	logger.Errorf("error message: %d", 2)
-	logger.Warningf("warning message: %d", 3)
-	logger.Infof("info message: %d", 4)
-	logger.Debugf("debug message: %d", 5)
-	logger.Tracef("trace message: %d", 6)
+	l.Fatalf("fatal message: %d", 1)
+	l.Errorf("error message: %d", 2)
+	l.Warningf("warning message: %d", 3)
+	l.Infof("info message: %d", 4)
+	l.Debugf("debug message: %d", 5)
+	l.Tracef("trace message: %d", 6)
 }
 
 func exampleLogStdout() {
-
-	logger := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ltime)
-
-	useLogger(logger)
+	l := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ltime)
+	useLogger(l)
 }
 
 func exampleLogOff() {
-
-	logger := logl.New(os.Stdout, 0, logl.Ltime)
-
-	useLogger(logger)
+	l := logl.New(os.Stdout, 0, logl.Ltime)
+	useLogger(l)
 }
 
 func exampleLogFile() {
 
-	file, err := os.OpenFile("./test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
+	file, err := os.OpenFile("test.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 	if err != nil {
 		return
 	}
@@ -63,7 +59,7 @@ func exampleLogFile() {
 
 func exampleLogAscii() {
 
-	logger := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ltime)
+	logger := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ldate|logl.Lmicroseconds)
 
 	data := make([]byte, 128)
 	for i := range data {
