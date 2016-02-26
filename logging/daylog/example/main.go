@@ -114,8 +114,6 @@ func logParser() error {
 		}
 		fmt.Println(record.Message)
 	}
-
-	return nil
 }
 
 func logGolang() error {

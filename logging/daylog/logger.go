@@ -91,33 +91,33 @@ func (l *recordLogger) Logf(level Level, format string, a ...interface{}) error 
 }
 
 func (l *recordLogger) Error(a ...interface{}) error {
-	return l.Log(LEVEL_ERROR, a...)
+	return l.logRecord(LEVEL_ERROR, fmt.Sprint(a...))
 }
 
 func (l *recordLogger) Errorf(format string, a ...interface{}) error {
-	return l.Logf(LEVEL_ERROR, format, a...)
+	return l.logRecord(LEVEL_ERROR, fmt.Sprintf(format, a...))
 }
 
 func (l *recordLogger) Warning(a ...interface{}) error {
-	return l.Log(LEVEL_WARNING, a...)
+	return l.logRecord(LEVEL_WARNING, fmt.Sprint(a...))
 }
 
 func (l *recordLogger) Warningf(format string, a ...interface{}) error {
-	return l.Logf(LEVEL_WARNING, format, a...)
+	return l.logRecord(LEVEL_WARNING, fmt.Sprintf(format, a...))
 }
 
 func (l *recordLogger) Info(a ...interface{}) error {
-	return l.Log(LEVEL_INFO, a...)
+	return l.logRecord(LEVEL_INFO, fmt.Sprint(a...))
 }
 
 func (l *recordLogger) Infof(format string, a ...interface{}) error {
-	return l.Logf(LEVEL_INFO, format, a...)
+	return l.logRecord(LEVEL_INFO, fmt.Sprintf(format, a...))
 }
 
 func (l *recordLogger) Debug(a ...interface{}) error {
-	return l.Log(LEVEL_DEBUG, a...)
+	return l.logRecord(LEVEL_DEBUG, fmt.Sprint(a...))
 }
 
 func (l *recordLogger) Debugf(format string, a ...interface{}) error {
-	return l.Logf(LEVEL_DEBUG, format, a...)
+	return l.logRecord(LEVEL_DEBUG, fmt.Sprintf(format, a...))
 }

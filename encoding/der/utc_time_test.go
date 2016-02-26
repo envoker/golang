@@ -31,7 +31,7 @@ func TestTimeEncodeDecode(t *testing.T) {
 		}
 
 		if !utc1.Equal(&utc2) {
-			t.Error("decode: %")
+			t.Error("decode: not equal")
 			return
 		}
 	}
