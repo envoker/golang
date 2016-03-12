@@ -32,12 +32,12 @@ func useLogger(l *logl.Logger) {
 }
 
 func exampleLogStdout() {
-	l := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ltime)
+	l := logl.New(os.Stdout, "", logl.LEVEL_DEBUG, logl.Ltime)
 	useLogger(l)
 }
 
 func exampleLogOff() {
-	l := logl.New(os.Stdout, 0, logl.Ltime)
+	l := logl.New(os.Stdout, "", 0, logl.Ltime)
 	useLogger(l)
 }
 
@@ -52,14 +52,14 @@ func exampleLogFile() {
 	w := bufio.NewWriter(file)
 	defer w.Flush()
 
-	logger := logl.New(w, logl.LEVEL_DEBUG, logl.Ldate|logl.Lmicroseconds)
+	logger := logl.New(w, "prefix ", logl.LEVEL_DEBUG, logl.Ldate|logl.Lmicroseconds)
 
 	useLogger(logger)
 }
 
 func exampleLogAscii() {
 
-	logger := logl.New(os.Stdout, logl.LEVEL_DEBUG, logl.Ldate|logl.Lmicroseconds)
+	logger := logl.New(os.Stdout, "test ", logl.LEVEL_DEBUG, logl.Ldate|logl.Lmicroseconds)
 
 	data := make([]byte, 128)
 	for i := range data {

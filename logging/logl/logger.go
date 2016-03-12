@@ -36,15 +36,21 @@ const (
 )
 
 type Logger struct {
-	mutex sync.Mutex
-	out   io.Writer
-	level Level
-	flag  int
-	buf   []byte
+	mutex  sync.Mutex
+	out    io.Writer
+	prefix string
+	level  Level
+	flag   int
+	buf    []byte
 }
 
-func New(w io.Writer, level Level, flag int) *Logger {
-	return &Logger{out: w, level: level, flag: flag}
+func New(w io.Writer, prefix string, level Level, flag int) *Logger {
+	return &Logger{
+		out:    w,
+		prefix: prefix,
+		level:  level,
+		flag:   flag,
+	}
 }
 
 func (l *Logger) SetOutput(w io.Writer) {
@@ -53,8 +59,24 @@ func (l *Logger) SetOutput(w io.Writer) {
 	l.mutex.Unlock()
 }
 
-func (l *Logger) Level() Level {
-	return l.level
+func (l *Logger) Prefix() (prefix string) {
+	l.mutex.Lock()
+	prefix = l.prefix
+	l.mutex.Unlock()
+	return
+}
+
+func (l *Logger) SetPrefix(prefix string) {
+	l.mutex.Lock()
+	l.prefix = prefix
+	l.mutex.Unlock()
+}
+
+func (l *Logger) Level() (level Level) {
+	l.mutex.Lock()
+	level = l.level
+	l.mutex.Unlock()
+	return
 }
 
 func (l *Logger) SetLevel(level Level) {
@@ -63,8 +85,11 @@ func (l *Logger) SetLevel(level Level) {
 	l.mutex.Unlock()
 }
 
-func (l *Logger) Flag() int {
-	return l.flag
+func (l *Logger) Flag() (flag int) {
+	l.mutex.Lock()
+	flag = l.flag
+	l.mutex.Unlock()
+	return
 }
 
 func (l *Logger) SetFlag(flag int) {
@@ -126,12 +151,13 @@ func (l *Logger) write(level Level, m string) error {
 	l.mutex.Lock()
 	defer l.mutex.Unlock()
 
-	if (level < LEVEL_FATAL) || (level > l.level) {
+	if level > l.level {
 		return nil
 	}
 
 	data := l.buf[:0]
 
+	data = append(data, l.prefix...)
 	data = append_level(data, level)
 	data = append_time(data, l.flag)
 	data = append_message(data, m)
@@ -200,9 +226,21 @@ func append_time(data []byte, flag int) []byte {
 }
 
 func append_message(data []byte, m string) []byte {
+
 	data = append(data, m...)
-	data = append(data, '\n')
+
+	if !lastByteIs(m, '\n') {
+		data = append(data, '\n')
+	}
+
 	return data
+}
+
+func lastByteIs(s string, b byte) bool {
+	if n := len(s); n > 0 {
+		return s[n-1] == b
+	}
+	return false
 }
 
 func itoa(data []byte, x int, count int) []byte {
