@@ -1,113 +1,63 @@
 package daylog
 
 import (
-	"bufio"
+	"errors"
+	"fmt"
 	"os"
-	"path/filepath"
 	"sync"
-	"time"
-
-	"github.com/envoker/golang/time/date"
 )
 
-type recordWriter struct {
-	dirname string
-	d       date.Date
-	file    *os.File
-	bw      *bufio.Writer
+type Writer struct {
+	mutex sync.Mutex
+	open  bool
+	quit  chan bool
+	fw    *fileWriter
 }
 
-func newRecordWriter(dirname string) *recordWriter {
+func New(dir string, daysNumber int, prefix string) (*Writer, error) {
 
-	return &recordWriter{
-		dirname: dirname,
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
+		return nil, fmt.Errorf("daylog: MkdirAll - %s", err.Error())
 	}
+
+	w := &Writer{
+		open: true,
+		quit: make(chan bool),
+		fw:   newFileWriter(dir, prefix),
+	}
+
+	go worker(w.quit, w.fw, rotator{dir, daysNumber})
+
+	return w, nil
 }
 
-func (w *recordWriter) Write(r record) error {
+func (w *Writer) Close() error {
 
-	t := time.Now()
-	d, _ := date.DateFromTime(t)
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
 
-	if w.file != nil {
-		if !d.Equal(w.d) {
-			w.Close()
-		}
+	if !w.open {
+		return errors.New("daylog: Writer is closed or not created")
 	}
 
-	if w.file == nil {
+	w.quit <- true
+	<-w.quit
 
-		fileName := filepath.Join(w.dirname, dateToFileName(d))
+	w.fw.Close()
 
-		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
-		if err != nil {
-			return newError("os.OpenFile:", err.Error())
-		}
-
-		bw := bufio.NewWriter(file)
-
-		w.d = d
-		w.file = file
-		w.bw = bw
-	}
-
-	bs, err := r.EncodeXML(t)
-	if err != nil {
-		return err
-	}
-
-	_, err = w.bw.Write(bs)
-	if err != nil {
-		return newError("Write:", err.Error())
-	}
+	w.open = false
 
 	return nil
 }
 
-func (w *recordWriter) Close() error {
+func (w *Writer) Write(data []byte) (n int, err error) {
 
-	if w.bw != nil {
-		w.bw.Flush()
-		w.bw = nil
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if !w.open {
+		return 0, errors.New("daylog: Writer is closed or not created")
 	}
 
-	if w.file != nil {
-		w.file.Close()
-		w.file = nil
-	}
-
-	return nil
-}
-
-func (w *recordWriter) Flush() error {
-
-	if w.bw != nil {
-		w.bw.Flush()
-	}
-
-	return nil
-}
-
-func recordWriteWorker(wg *sync.WaitGroup, quit chan struct{}, records <-chan record, dirname string) {
-
-	defer wg.Done()
-
-	ticker := time.NewTicker(time.Minute)
-	defer ticker.Stop()
-
-	w := newRecordWriter(dirname)
-	defer w.Close()
-
-	for {
-		select {
-		case <-quit:
-			return
-
-		case r := <-records:
-			w.Write(r)
-
-		case <-ticker.C:
-			w.Flush()
-		}
-	}
+	return w.fw.writeLine(data)
 }
