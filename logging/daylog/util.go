@@ -14,20 +14,20 @@ func append_line(data []byte, line []byte) []byte {
 
 func append_time(data []byte, t time.Time, Fmicroseconds bool) []byte {
 	hour, min, sec := t.Clock()
-	data = itoa(data, hour, 2)
+	data = append_intc(data, hour, 2)
 	data = append(data, ':')
-	data = itoa(data, min, 2)
+	data = append_intc(data, min, 2)
 	data = append(data, ':')
-	data = itoa(data, sec, 2)
+	data = append_intc(data, sec, 2)
 	if Fmicroseconds {
 		data = append(data, '.')
-		data = itoa(data, t.Nanosecond()/1e3, 6)
+		data = append_intc(data, t.Nanosecond()/1e3, 6)
 	}
 	data = append(data, ' ')
 	return data
 }
 
-func itoa(data []byte, x int, count int) []byte {
+func append_intc(data []byte, x int, count int) []byte {
 	begin := len(data)
 	for i := 0; i < count; i++ {
 		quo, rem := quoRem(x, 10)

@@ -1,25 +1,65 @@
 package daylog
 
 import (
+	"io/ioutil"
 	"log"
+	"os"
+	"path/filepath"
 	"time"
+
+	"github.com/envoker/golang/time/date"
 )
 
 type flusher interface {
-	Flush() error
+	flush() error
+}
+
+type rotator struct {
+	dir        string
+	daysNumber int
+}
+
+func (r *rotator) Rotate() {
+	if err := removeOld(r.dir, r.daysNumber); err != nil {
+		log.Println(err)
+	}
+}
+
+func removeOld(dir string, daysNumber int) error {
+
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		return err
+	}
+
+	dateNow := date.Now()
+
+	for _, fileInfo := range files {
+		if !fileInfo.IsDir() {
+			fileName := fileInfo.Name()
+			dateFile, err := dateFromFileName(fileName)
+			if err == nil {
+				if dateNow.Sub(dateFile) >= daysNumber {
+					if err := os.Remove(filepath.Join(dir, fileName)); err != nil {
+						log.Println(err)
+					}
+				}
+			}
+		}
+	}
+
+	return nil
 }
 
 func worker(quit chan bool, f flusher, r rotator) {
 
-	flushTicker := time.NewTicker(12 * time.Hour)
+	r.Rotate()
+
+	flushTicker := time.NewTicker(5 * time.Minute)
 	defer flushTicker.Stop()
 
-	rotateTicker := time.NewTicker(5 * time.Minute)
+	rotateTicker := time.NewTicker(12 * time.Hour)
 	defer rotateTicker.Stop()
-
-	if err := r.Rotate(); err != nil {
-		log.Println(err)
-	}
 
 	for {
 		select {
@@ -28,14 +68,10 @@ func worker(quit chan bool, f flusher, r rotator) {
 			return
 
 		case <-flushTicker.C:
-			if err := f.Flush(); err != nil {
-				log.Println(err)
-			}
+			f.flush()
 
 		case <-rotateTicker.C:
-			if err := r.Rotate(); err != nil {
-				log.Println(err)
-			}
+			r.Rotate()
 		}
 	}
 }

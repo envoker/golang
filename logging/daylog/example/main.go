@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math/rand"
 	"runtime"
@@ -11,7 +12,11 @@ import (
 )
 
 func main() {
-	if err := loglFiller(); err != nil {
+
+	fn := logFiller
+	//fn := loglFiller
+
+	if err := fn(); err != nil {
 		log.Println(err)
 	}
 }
@@ -30,14 +35,14 @@ func logFiller() error {
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
-		go testLoop(wg, logger, i)
+		go logLoop(wg, logger, i)
 	}
 	wg.Wait()
 
 	return nil
 }
 
-func testLoop(wg *sync.WaitGroup, logger *log.Logger, index int) {
+func logLoop(wg *sync.WaitGroup, logger *log.Logger, index int) {
 
 	defer wg.Done()
 
@@ -56,26 +61,43 @@ func loglFiller() error {
 	}
 	defer w.Close()
 
-	logger := logl.New(w, "ios ", logl.LEVEL_DEBUG, 0)
+	logger := logl.New(w, "ios ", logl.LEVEL_WARNING, 0)
 
 	const n = 100
 	wg := new(sync.WaitGroup)
 	wg.Add(n)
 	for i := 0; i < n; i++ {
-		go testLoopLogl(wg, logger, i)
+		go loglLoop(wg, logger, i)
 	}
 	wg.Wait()
 
 	return nil
 }
 
-func testLoopLogl(wg *sync.WaitGroup, logger *logl.Logger, index int) {
+func loglLoop(wg *sync.WaitGroup, logger *logl.Logger, index int) {
 
 	defer wg.Done()
 
 	r := rand.New(rand.NewSource(int64(index)))
 	for i := 0; i < 100; i++ {
-		logger.Infof("routine(%d):%s", index, randString(r, 40))
+
+		m := fmt.Sprintf("routine(%d): %s", index, randString(r, 40))
+
+		switch k := r.Intn(6); k {
+		case 0:
+			logger.Fatal(m)
+		case 1:
+			logger.Error(m)
+		case 2:
+			logger.Warning(m)
+		case 3:
+			logger.Info(m)
+		case 4:
+			logger.Debug(m)
+		case 5:
+			logger.Trace(m)
+		}
+
 		runtime.Gosched()
 	}
 }

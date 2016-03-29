@@ -9,7 +9,6 @@ import (
 
 type Writer struct {
 	mutex sync.Mutex
-	open  bool
 	quit  chan bool
 	fw    *fileWriter
 }
@@ -21,33 +20,35 @@ func New(dir string, daysNumber int, prefix string) (*Writer, error) {
 	}
 
 	w := &Writer{
-		open: true,
 		quit: make(chan bool),
 		fw:   newFileWriter(dir, prefix),
 	}
 
-	go worker(w.quit, w.fw, rotator{dir, daysNumber})
+	go worker(w.quit, flusher(w), rotator{dir, daysNumber})
 
 	return w, nil
 }
+
+var errorWriterIsClose = errors.New("daylog: Writer is closed or not created")
 
 func (w *Writer) Close() error {
 
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	if !w.open {
-		return errors.New("daylog: Writer is closed or not created")
+	if w.fw == nil {
+		return errorWriterIsClose
 	}
 
+	// Stop worker
 	w.quit <- true
 	<-w.quit
 
-	w.fw.Close()
+	// Close file writer
+	err := w.fw.Close()
+	w.fw = nil
 
-	w.open = false
-
-	return nil
+	return err
 }
 
 func (w *Writer) Write(data []byte) (n int, err error) {
@@ -55,9 +56,25 @@ func (w *Writer) Write(data []byte) (n int, err error) {
 	w.mutex.Lock()
 	defer w.mutex.Unlock()
 
-	if !w.open {
-		return 0, errors.New("daylog: Writer is closed or not created")
+	if w.fw == nil {
+		return 0, errorWriterIsClose
 	}
 
 	return w.fw.writeLine(data)
+}
+
+func (w *Writer) flush() error {
+
+	w.mutex.Lock()
+	defer w.mutex.Unlock()
+
+	if w.fw == nil {
+		return errorWriterIsClose
+	}
+
+	if err := w.fw.Flush(); err != nil {
+		return err
+	}
+
+	return nil
 }

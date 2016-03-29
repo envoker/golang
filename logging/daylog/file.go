@@ -2,37 +2,31 @@ package daylog
 
 import (
 	"bufio"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 	"time"
 
 	"github.com/envoker/golang/time/date"
 )
 
 type fileWriter struct {
-	mutex   sync.Mutex
-	dirname string
-	prefix  string
-	d       date.Date
-	file    *os.File
-	bw      *bufio.Writer
-	buf     []byte
+	dir    string
+	prefix string
+	d      date.Date
+	file   *os.File
+	bw     *bufio.Writer
+	buf    []byte
 }
 
-func newFileWriter(dirname string, prefix string) *fileWriter {
+func newFileWriter(dir string, prefix string) *fileWriter {
 	return &fileWriter{
-		dirname: dirname,
-		prefix:  prefix,
+		dir:    dir,
+		prefix: prefix,
 	}
 }
 
 func (w *fileWriter) writeLine(line []byte) (int, error) {
-
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
 
 	t := time.Now()
 	d, _ := date.DateFromTime(t)
@@ -45,7 +39,7 @@ func (w *fileWriter) writeLine(line []byte) (int, error) {
 
 	if w.file == nil {
 
-		fileName := filepath.Join(w.dirname, dateToFileName(d))
+		fileName := filepath.Join(w.dir, dateToFileName(d))
 
 		file, err := os.OpenFile(fileName, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0666)
 		if err != nil {
@@ -60,6 +54,7 @@ func (w *fileWriter) writeLine(line []byte) (int, error) {
 	}
 
 	data := w.buf[:0]
+
 	data = append(data, w.prefix...)
 	data = append_time(data, t, true)
 	data = append_line(data, line)
@@ -70,9 +65,6 @@ func (w *fileWriter) writeLine(line []byte) (int, error) {
 }
 
 func (w *fileWriter) Close() error {
-
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
 
 	if w.bw != nil {
 		w.bw.Flush()
@@ -89,12 +81,10 @@ func (w *fileWriter) Close() error {
 }
 
 func (w *fileWriter) Flush() error {
-
-	w.mutex.Lock()
-	defer w.mutex.Unlock()
-
-	if w.bw == nil {
-		return errors.New("daylog: fileWriter is closed or not created")
+	if w.bw != nil {
+		if err := w.bw.Flush(); err != nil {
+			return err
+		}
 	}
-	return w.bw.Flush()
+	return nil
 }

@@ -200,24 +200,24 @@ func append_time(data []byte, flag int) []byte {
 
 	if flag&Ldate != 0 {
 		year, month, day := now.Date()
-		data = itoa(data, year, 4)
+		data = append_intc(data, year, 4)
 		data = append(data, '/')
-		data = itoa(data, int(month), 2)
+		data = append_intc(data, int(month), 2)
 		data = append(data, '/')
-		data = itoa(data, day, 2)
+		data = append_intc(data, day, 2)
 		data = append(data, ' ')
 	}
 
 	if flag&(Ltime|Lmicroseconds) != 0 {
 		hour, min, sec := now.Clock()
-		data = itoa(data, hour, 2)
+		data = append_intc(data, hour, 2)
 		data = append(data, ':')
-		data = itoa(data, min, 2)
+		data = append_intc(data, min, 2)
 		data = append(data, ':')
-		data = itoa(data, sec, 2)
+		data = append_intc(data, sec, 2)
 		if flag&Lmicroseconds != 0 {
 			data = append(data, '.')
-			data = itoa(data, now.Nanosecond()/1e3, 6)
+			data = append_intc(data, now.Nanosecond()/1e3, 6)
 		}
 		data = append(data, ' ')
 	}
@@ -243,7 +243,7 @@ func lastByteIs(s string, b byte) bool {
 	return false
 }
 
-func itoa(data []byte, x int, count int) []byte {
+func append_intc(data []byte, x int, count int) []byte {
 	begin := len(data)
 	for i := 0; i < count; i++ {
 		quo, rem := quoRem(x, 10)
