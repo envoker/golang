@@ -23,7 +23,7 @@ func main() {
 
 func logFiller() error {
 
-	w, err := daylog.New("./test", 10, "utc ")
+	w, err := daylog.New("./logs", 10, "utc ")
 	if err != nil {
 		return err
 	}
@@ -48,7 +48,7 @@ func logLoop(wg *sync.WaitGroup, logger *log.Logger, index int) {
 
 	r := rand.New(rand.NewSource(int64(index)))
 	for i := 0; i < 100; i++ {
-		logger.Printf("routine(%d):%s", index, randString(r, 40))
+		logger.Printf("routine(%d): %s", index, randString(r, 15))
 		runtime.Gosched()
 	}
 }
@@ -81,7 +81,7 @@ func loglLoop(wg *sync.WaitGroup, logger *logl.Logger, index int) {
 	r := rand.New(rand.NewSource(int64(index)))
 	for i := 0; i < 100; i++ {
 
-		m := fmt.Sprintf("routine(%d): %s", index, randString(r, 40))
+		m := fmt.Sprintf("routine(%d): %s", index, randString(r, 15))
 
 		switch k := r.Intn(6); k {
 		case 0:
