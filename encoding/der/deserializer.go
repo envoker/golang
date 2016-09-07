@@ -133,10 +133,10 @@ func structDeserialize(v reflect.Value, node *Node) error {
 	container := node.GetValue().(Container)
 
 	for i := 0; i < v.NumField(); i++ {
-
-		err := structFieldDeserialize(container, v.Field(i), &(tinfo.fields[i]))
+		field := v.Field(i)
+		err := structFieldDeserialize(container, field, &(tinfo.fields[i]))
 		if err != nil {
-			return err
+			return fmt.Errorf("der: field no.%d (for type %v) deserialize error: %s", i, field.Type(), err)
 		}
 	}
 
