@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"log"
 	"math"
 	"time"
 )
@@ -21,13 +21,7 @@ func monoTone() error {
 	}
 
 	samplers := MakeSamplers(gs, sampleRate)
-
-	err := GenerateWave("./mono-tone.wav", time.Second*9, sampleRate, bytesPerSample, samplers)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return GenerateWave("./mono-tone.wav", time.Second*9, sampleRate, bytesPerSample, samplers)
 }
 
 func stereoTone() error {
@@ -48,13 +42,7 @@ func stereoTone() error {
 	}
 
 	samplers := MakeSamplers(gs, sampleRate)
-
-	err := GenerateWave("./stereo-tone.wav", time.Second*13, sampleRate, bytesPerSample, samplers)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return GenerateWave("./stereo-tone.wav", time.Second*13, sampleRate, bytesPerSample, samplers)
 }
 
 func multiTone() error {
@@ -85,33 +73,19 @@ func multiTone() error {
 	}
 
 	samplers := MakeSamplers(gs, sampleRate)
-
-	err := GenerateWave("./multi-tone.wav", time.Second*7, sampleRate, bytesPerSample, samplers)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func Generate() (err error) {
-
-	if err = monoTone(); err != nil {
-		return
-	}
-	if err = stereoTone(); err != nil {
-		return
-	}
-	if err = multiTone(); err != nil {
-		return
-	}
-
-	return
+	return GenerateWave("./multi-tone.wav", time.Second*7, sampleRate, bytesPerSample, samplers)
 }
 
 func main() {
+	if err := monoTone(); err != nil {
+		log.Fatal(err)
+	}
 
-	if err := Generate(); err != nil {
-		fmt.Println(err.Error())
+	if err := stereoTone(); err != nil {
+		log.Fatal(err)
+	}
+
+	if err := multiTone(); err != nil {
+		log.Fatal(err)
 	}
 }

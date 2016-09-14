@@ -82,7 +82,6 @@ func (s Sample) Int64() int64 {
 }
 */
 
-//-----------------------------------------
 func SampleToInt8(sample float32) int8 {
 	sample = SampleNormalize(sample)
 	return int8(round(maxInt8 * sample))
@@ -113,7 +112,6 @@ func SampleToInt64(sample float32) int64 {
 	return int64(round(maxInt64 * sample))
 }
 
-//-----------------------------------------
 func SampleFromInt8(i int8) float32 {
 	return SampleNormalize(float32(i) / maxInt8)
 }
@@ -138,7 +136,6 @@ func SampleFromInt64(i int64) float32 {
 	return SampleNormalize(float32(i) / maxInt64)
 }
 
-//-----------------------------------------
 type sampler interface {
 	writeSample(w io.Writer, sample float32) error
 }
@@ -147,9 +144,9 @@ type int8Sampler struct {
 	bs [1]byte
 }
 
-func (this *int8Sampler) writeSample(w io.Writer, sample float32) error {
+func (sm *int8Sampler) writeSample(w io.Writer, sample float32) error {
 
-	b := this.bs[:]
+	b := sm.bs[:]
 
 	i := SampleToInt8(sample)
 	u := uint8(int(i) + 128)
@@ -162,9 +159,9 @@ func (this *int8Sampler) writeSample(w io.Writer, sample float32) error {
 	return nil
 }
 
-func (this *int8Sampler) readSample(r io.Reader) (sample float32, err error) {
+func (sm *int8Sampler) readSample(r io.Reader) (sample float32, err error) {
 
-	b := this.bs[:]
+	b := sm.bs[:]
 
 	if _, err = r.Read(b); err != nil {
 		return
@@ -181,9 +178,9 @@ type int16Sampler struct {
 	bs [2]byte
 }
 
-func (this *int16Sampler) writeSample(w io.Writer, sample float32) error {
+func (sm *int16Sampler) writeSample(w io.Writer, sample float32) error {
 
-	b := this.bs[:]
+	b := sm.bs[:]
 
 	i := SampleToInt16(sample)
 	le.PutInt16(b, i)
@@ -195,9 +192,9 @@ func (this *int16Sampler) writeSample(w io.Writer, sample float32) error {
 	return nil
 }
 
-func (this *int16Sampler) readSample(r io.Reader) (sample float32, err error) {
+func (sm *int16Sampler) readSample(r io.Reader) (sample float32, err error) {
 
-	b := this.bs[:]
+	b := sm.bs[:]
 
 	if _, err = r.Read(b); err != nil {
 		return
@@ -213,9 +210,9 @@ type int24Sampler struct {
 	bs [3]byte
 }
 
-func (this *int24Sampler) writeSample(w io.Writer, sample float32) error {
+func (sm *int24Sampler) writeSample(w io.Writer, sample float32) error {
 
-	b := this.bs[:]
+	b := sm.bs[:]
 
 	i := SampleToInt24(sample)
 	le.PutInt24(b, i)
@@ -231,9 +228,9 @@ type int32Sampler struct {
 	bs [4]byte
 }
 
-func (this *int32Sampler) writeSample(w io.Writer, sample float32) error {
+func (sm *int32Sampler) writeSample(w io.Writer, sample float32) error {
 
-	b := this.bs[:]
+	b := sm.bs[:]
 
 	i := SampleToInt32(sample)
 	le.PutInt32(b, i)
@@ -264,35 +261,26 @@ type SampleWriter struct {
 	s sampler
 }
 
-func (this *SampleWriter) WriteSample(sample float32) error {
+func (sw *SampleWriter) WriteSample(sample float32) error {
 
-	return this.s.writeSample(this.w, sample)
+	return sw.s.writeSample(sw.w, sample)
 }
 
-func NewSampleWriter(w io.Writer, bytesPerSample int) (sw *SampleWriter, err error) {
-
+func NewSampleWriter(w io.Writer, bytesPerSample int) (*SampleWriter, error) {
 	switch bytesPerSample {
-
 	case 1:
-		sw = &SampleWriter{w, new(int8Sampler)}
-
+		return &SampleWriter{w, new(int8Sampler)}, nil
 	case 2:
-		sw = &SampleWriter{w, new(int16Sampler)}
-
+		return &SampleWriter{w, new(int16Sampler)}, nil
 	case 3:
-		sw = &SampleWriter{w, new(int24Sampler)}
-
+		return &SampleWriter{w, new(int24Sampler)}, nil
 	case 4:
-		sw = &SampleWriter{w, new(int32Sampler)}
-
+		return &SampleWriter{w, new(int32Sampler)}, nil
 	default:
-		err = ErrorBytesPerSample
+		return nil, ErrBytesPerSample
 	}
-
-	return
 }
 
-//---------------------------------------------------------------------------------
 /*
 type BlockWriter interface {
 	WriteBlock(block []float32) error
@@ -302,7 +290,6 @@ type BlockReader interface {
 	ReadBlock(block []float32) error
 }
 
-//---------------------------------------------------------------------------------
 type blockWriter struct {
 	w  io.Writer
 	c  Config

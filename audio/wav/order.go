@@ -1,16 +1,11 @@
 package wav
 
-//import "encoding/binary"
-
-// ByteOrder
-
 type littleEndian struct{}
 
 var le littleEndian
 
-//--------------------------------------------------
 //	Int16
-//--------------------------------------------------
+
 func (littleEndian) PutInt16(b []byte, i int16) {
 
 	u := uint16(i)
@@ -29,9 +24,8 @@ func (littleEndian) GetInt16(b []byte) (i int16) {
 	return
 }
 
-//--------------------------------------------------
 //	Int24
-//--------------------------------------------------
+
 func (littleEndian) PutInt24(b []byte, i int32) {
 
 	u := uint32(i)
@@ -56,9 +50,8 @@ func (littleEndian) GetInt24(b []byte) (i int32) {
 	return
 }
 
-//--------------------------------------------------
 //	Int32
-//--------------------------------------------------
+
 func (littleEndian) PutInt32(b []byte, i int32) {
 
 	u := uint32(i)
@@ -80,5 +73,3 @@ func (littleEndian) GetInt32(b []byte) (i int32) {
 
 	return
 }
-
-//--------------------------------------------------

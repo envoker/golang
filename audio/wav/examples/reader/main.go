@@ -10,6 +10,8 @@ import (
 
 func main() {
 
+	wav.ErrorBytesPerSample
+
 	fileName := "./test.wav"
 
 	TestWaveRead(fileName)
@@ -26,7 +28,7 @@ func TestWaveWrite(fileName string) {
 		BytesPerSample: 2,
 	}
 
-	fw, err := wav.OpenFileWriter(fileName, &c)
+	fw, err := wav.NewFileWriter(fileName, c)
 	if err != nil {
 		fmt.Println(err)
 		return
@@ -46,7 +48,7 @@ func TestWaveRead(fileName string) {
 
 	var c wav.Config
 
-	fr, err := wav.OpenFileReader(fileName, &c)
+	fr, err := wav.NewFileReader(fileName, &c)
 	if err != nil {
 		fmt.Println(err)
 		return

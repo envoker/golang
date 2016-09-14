@@ -17,18 +17,17 @@ type toneSampler struct {
 	t, dt     float32
 }
 
-func (this *toneSampler) NextSample() float32 {
+func (ts *toneSampler) NextSample() float32 {
 
-	u := float64(this.w*this.t + this.phase)
-	sample := this.amplitude * float32(math.Sin(u))
+	u := float64(ts.w*ts.t + ts.phase)
+	sample := ts.amplitude * float32(math.Sin(u))
 
-	this.t += this.dt
+	ts.t += ts.dt
 
 	return sample
 }
 
 func NewToneSampler(g Garmonica, sampleRate float32) wav.NextSampler {
-
 	return &toneSampler{
 		amplitude: g.Amplitude,
 		phase:     g.Phase,
@@ -39,11 +38,9 @@ func NewToneSampler(g Garmonica, sampleRate float32) wav.NextSampler {
 }
 
 func MakeSamplers(gs []Garmonica, sampleRate float32) []wav.NextSampler {
-
 	samplers := make([]wav.NextSampler, len(gs))
 	for i, g := range gs {
 		samplers[i] = NewToneSampler(g, sampleRate)
 	}
-
 	return samplers
 }

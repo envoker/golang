@@ -1,20 +1,18 @@
 package wav
 
-import (
-	"io"
-)
+import "io"
 
-type Sizer interface {
+type sizer interface {
 	Size() int
 }
 
 type encoder interface {
-	Sizer
+	sizer
 	encode(data []byte) (n int, err error)
 }
 
 type decoder interface {
-	Sizer
+	sizer
 	decode(data []byte) (n int, err error)
 }
 

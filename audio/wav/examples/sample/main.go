@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"math"
 
 	"github.com/envoker/golang/audio/wav"
 )
@@ -15,7 +16,7 @@ func main() {
 
 func Int8Test() {
 
-	min, max := -(wav.MaxInt8 + 1), wav.MaxInt8
+	min, max := -(math.MaxInt8 + 1), math.MaxInt8
 	for v := min; v <= max; v++ {
 
 		i := int8(v)
@@ -35,7 +36,7 @@ func Int8Test() {
 
 func Int16Test() {
 
-	min, max := -(wav.MaxInt16 + 1), wav.MaxInt16
+	min, max := -(math.MaxInt16 + 1), math.MaxInt16
 	for v := min; v <= max; v++ {
 
 		i := int16(v)
@@ -55,7 +56,9 @@ func Int16Test() {
 
 func Int24Test() {
 
-	min, max := -(wav.MaxInt24 + 1), wav.MaxInt24
+	const maxInt24 = 1<<24 - 1
+
+	min, max := -(maxInt24 + 1), maxInt24
 	for v := min; v <= max; v++ {
 
 		i := int32(v)

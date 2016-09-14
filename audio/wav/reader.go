@@ -1,30 +1,23 @@
 package wav
 
-import (
-	"io"
-	"os"
-)
+import "os"
 
-type fileReader struct {
+type FileReader struct {
 	config     Config
 	dataLength uint32
-	f          *os.File
+	file       *os.File
 }
 
-func OpenFileReader(fileName string, config *Config) (io.ReadCloser, error) {
+func NewFileReader(fileName string, config *Config) (*FileReader, error) {
 
-	if config == nil {
-		return nil, newError("OpenFileReader: config is nil")
-	}
-
-	f, err := os.Open(fileName)
+	file, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
 	}
 
-	fr := &fileReader{
+	fr := &FileReader{
 		dataLength: 0,
-		f:          f,
+		file:       file,
 	}
 
 	if err = fr.readConfig(); err != nil {
@@ -36,50 +29,47 @@ func OpenFileReader(fileName string, config *Config) (io.ReadCloser, error) {
 	return fr, nil
 }
 
-func (this *fileReader) Read(data []byte) (n int, err error) {
+func (fr *FileReader) Close() error {
 
-	if this.dataLength == 0 {
+	if fr.file == nil {
+		return ErrFileReaderClosed
+	}
+
+	err := fr.file.Close()
+	fr.file = nil
+	fr.dataLength = 0
+
+	return err
+}
+
+func (fr *FileReader) Read(data []byte) (n int, err error) {
+
+	if fr.dataLength == 0 {
 		return 0, nil
 	}
 
 	n = len(data)
-	if n > int(this.dataLength) {
-		n = int(this.dataLength)
+	if n > int(fr.dataLength) {
+		n = int(fr.dataLength)
 	}
 
-	n, err = this.f.Read(data[:n])
+	n, err = fr.file.Read(data[:n])
 	if err != nil {
 		return 0, err
 	}
 
-	this.dataLength -= uint32(n)
+	fr.dataLength -= uint32(n)
 
 	return
 }
 
-func (this *fileReader) Close() error {
-
-	if this.f != nil {
-		this.f.Close()
-		this.f = nil
-		this.dataLength = 0
-	}
-
-	return nil
+func (fr *FileReader) getConfig(c *Config) {
+	*c = fr.config
 }
 
-func (this *fileReader) getConfig(c *Config) error {
+func (fr *FileReader) readConfig() error {
 
-	*c = this.config
-
-	return nil
-}
-
-func (this *fileReader) readConfig() error {
-
-	var err error
-
-	_, err = this.f.Seek(0, os.SEEK_SET)
+	_, err := fr.file.Seek(0, os.SEEK_SET)
 	if err != nil {
 		return err
 	}
@@ -89,7 +79,7 @@ func (this *fileReader) readConfig() error {
 
 	// RIFF header
 	{
-		if _, err = readAndDecode(this.f, &ch); err != nil {
+		if _, err = readAndDecode(fr.file, &ch); err != nil {
 			return err
 		}
 
@@ -103,7 +93,7 @@ func (this *fileReader) readConfig() error {
 		{
 			var riffFormat chunkID
 
-			if _, err = this.f.Read(riffFormat[:]); err != nil {
+			if _, err = fr.file.Read(riffFormat[:]); err != nil {
 				return err
 			}
 
@@ -119,7 +109,7 @@ func (this *fileReader) readConfig() error {
 	ever := true
 	for ever {
 
-		if _, err = readAndDecode(this.f, &ch); err != nil {
+		if _, err = readAndDecode(fr.file, &ch); err != nil {
 			return err
 		}
 
@@ -131,22 +121,19 @@ func (this *fileReader) readConfig() error {
 			{
 				var c_data fmtData
 
-				_, err = readAndDecode(this.f, &c_data)
+				_, err = readAndDecode(fr.file, &c_data)
 				if err != nil {
 					return err
 				}
 
-				this.config, err = c_data.getConfig()
-				if err != nil {
-					return err
-				}
+				c_data.getConfig(&(fr.config))
 
 				f_fmtChunk = true
 			}
 
 		case ch.chunkIdEqual(token_data):
 			{
-				this.dataLength = ch.size
+				fr.dataLength = ch.size
 				f_dataChunk = true
 				ever = false
 				break
@@ -154,7 +141,7 @@ func (this *fileReader) readConfig() error {
 
 		default: // skip other chunk data
 			{
-				_, err = this.f.Seek(int64(ch.size), os.SEEK_CUR)
+				_, err = fr.file.Seek(int64(ch.size), os.SEEK_CUR)
 				if err != nil {
 					return err
 				}

@@ -13,12 +13,12 @@ func GenerateWave(fileName string, duration time.Duration, sampleRate float32, b
 
 	c := wav.Config{
 		AudioFormat:    wav.WAVE_FORMAT_PCM,
-		Channels:       uint16(len(samplers)),
-		SampleRate:     uint32(sampleRate),
-		BytesPerSample: uint16(bytesPerSample),
+		Channels:       len(samplers),
+		SampleRate:     int(sampleRate),
+		BytesPerSample: bytesPerSample,
 	}
 
-	fw, err := wav.OpenFileWriter(fileName, &c)
+	fw, err := wav.NewFileWriter(fileName, c)
 	if err != nil {
 		return err
 	}
@@ -26,7 +26,7 @@ func GenerateWave(fileName string, duration time.Duration, sampleRate float32, b
 
 	bw := bufio.NewWriterSize(fw, int(c.BytesPerSec()))
 
-	w, err := wav.NewSampleWriter(bw, int(c.BytesPerSample))
+	sw, err := wav.NewSampleWriter(bw, int(c.BytesPerSample))
 	if err != nil {
 		return err
 	}
@@ -34,16 +34,11 @@ func GenerateWave(fileName string, duration time.Duration, sampleRate float32, b
 	n := int(Tmax * sampleRate)
 	for i := 0; i < n; i++ {
 		for _, sampler := range samplers {
-			err = w.WriteSample(sampler.NextSample())
-			if err != nil {
+			if err = sw.WriteSample(sampler.NextSample()); err != nil {
 				return err
 			}
 		}
 	}
 
-	if err = bw.Flush(); err != nil {
-		return err
-	}
-
-	return nil
+	return bw.Flush()
 }

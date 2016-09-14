@@ -1,35 +1,28 @@
 package wav
 
-import (
-	"io"
-	"os"
-)
+import "os"
 
-type fileWriter struct {
+type FileWriter struct {
 	config     Config
 	dataLength uint32
-	f          *os.File
+	file       *os.File
 }
 
-func OpenFileWriter(fileName string, config *Config) (io.WriteCloser, error) {
+func NewFileWriter(fileName string, config Config) (*FileWriter, error) {
 
-	if config == nil {
-		return nil, newError("OpenFileWriter: config is nil")
-	}
-
-	if err := config.Error(); err != nil {
+	if err := config.checkError(); err != nil {
 		return nil, err
 	}
 
-	f, err := os.Create(fileName)
+	file, err := os.Create(fileName)
 	if err != nil {
 		return nil, err
 	}
 
-	fw := &fileWriter{
-		config:     *config,
+	fw := &FileWriter{
+		config:     config,
 		dataLength: 0,
-		f:          f,
+		file:       file,
 	}
 
 	fw.writeConfig()
@@ -37,34 +30,28 @@ func OpenFileWriter(fileName string, config *Config) (io.WriteCloser, error) {
 	return fw, nil
 }
 
-func (this *fileWriter) Write(data []byte) (n int, err error) {
+func (fw *FileWriter) Close() error {
 
-	n, err = this.f.Write(data)
-	if err != nil {
-		return
-	}
+	if fw.file != nil {
+		fw.writeDataLength()
 
-	this.dataLength += uint32(n)
-
-	return
-}
-
-func (this *fileWriter) Close() error {
-
-	if this.f != nil {
-		this.writeDataLength()
-
-		this.f.Close()
-		this.f = nil
-		this.dataLength = 0
+		fw.file.Close()
+		fw.file = nil
+		fw.dataLength = 0
 	}
 
 	return nil
 }
 
-func (this *fileWriter) writeConfig() error {
+func (fw *FileWriter) Write(data []byte) (n int, err error) {
+	n, err = fw.file.Write(data)
+	fw.dataLength += uint32(n)
+	return n, err
+}
 
-	_, err := this.f.Seek(0, os.SEEK_SET)
+func (fw *FileWriter) writeConfig() error {
+
+	_, err := fw.file.Seek(0, os.SEEK_SET)
 	if err != nil {
 		return err
 	}
@@ -78,14 +65,14 @@ func (this *fileWriter) writeConfig() error {
 			size: 0,
 		}
 
-		if _, err = encodeAndWrite(&ch, this.f); err != nil {
+		if _, err = encodeAndWrite(&ch, fw.file); err != nil {
 			return err
 		}
 
 		// WAVE
 		{
 			var riffFormat = token_WAVE
-			if _, err = this.f.Write(riffFormat[:]); err != nil {
+			if _, err = fw.file.Write(riffFormat[:]); err != nil {
 				return err
 			}
 		}
@@ -98,16 +85,16 @@ func (this *fileWriter) writeConfig() error {
 			size: size_FmtData,
 		}
 
-		if _, err = encodeAndWrite(&ch, this.f); err != nil {
+		if _, err = encodeAndWrite(&ch, fw.file); err != nil {
 			return err
 		}
 
 		var c_data fmtData
-		if err = c_data.setConfig(this.config); err != nil {
+		if err = c_data.setConfig(fw.config); err != nil {
 			return err
 		}
 
-		if _, err = encodeAndWrite(&c_data, this.f); err != nil {
+		if _, err = encodeAndWrite(&c_data, fw.file); err != nil {
 			return err
 		}
 	}
@@ -119,7 +106,7 @@ func (this *fileWriter) writeConfig() error {
 			size: 0,
 		}
 
-		if _, err = encodeAndWrite(&ch, this.f); err != nil {
+		if _, err = encodeAndWrite(&ch, fw.file); err != nil {
 			return err
 		}
 	}
@@ -127,11 +114,11 @@ func (this *fileWriter) writeConfig() error {
 	return nil
 }
 
-func (this *fileWriter) writeDataLength() (err error) {
+func (fw *FileWriter) writeDataLength() error {
 
 	var data = make([]byte, size_chunkSize)
 
-	size_dataChunk := size_chunkHeader + this.dataLength
+	size_dataChunk := size_chunkHeader + fw.dataLength
 
 	// RIFF chunk
 	{
@@ -139,23 +126,23 @@ func (this *fileWriter) writeDataLength() (err error) {
 		pos := int64(size_chunkID)
 
 		byteOrder.PutUint32(data, size)
-		this.f.Seek(pos, os.SEEK_SET)
-		if _, err = this.f.Write(data); err != nil {
-			return
+		fw.file.Seek(pos, os.SEEK_SET)
+		if _, err := fw.file.Write(data); err != nil {
+			return err
 		}
 	}
 
 	// data chunk
 	{
-		size := this.dataLength
+		size := fw.dataLength
 		pos := int64(size_RiffHeader + size_FmtChunk + size_chunkID)
 
 		byteOrder.PutUint32(data, size)
-		this.f.Seek(pos, os.SEEK_SET)
-		if _, err = this.f.Write(data); err != nil {
-			return
+		fw.file.Seek(pos, os.SEEK_SET)
+		if _, err := fw.file.Write(data); err != nil {
+			return err
 		}
 	}
 
-	return
+	return nil
 }

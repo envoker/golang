@@ -9,8 +9,8 @@ const (
 	WAVE_FORMAT_IEEE_FLOAT              = 0x0003 // IEEE Float
 	WAVE_FORMAT_VSELP                   = 0x0004 // Compaq Computer's VSELP
 	WAVE_FORMAT_IBM_CSVD                = 0x0005 // IBM CVSD
-	WAVE_FORMAT_ALAW                    = 0x0006 // ALAW
-	WAVE_FORMAT_MULAW                   = 0x0007 // MULAW
+	WAVE_FORMAT_ALAW                    = 0x0006 // A-Law
+	WAVE_FORMAT_MULAW                   = 0x0007 // Mu-Law
 	WAVE_FORMAT_OKI_ADPCM               = 0x0010 // OKI ADPCM
 	WAVE_FORMAT_DVI_ADPCM               = 0x0011 // Intel's DVI ADPCM
 	WAVE_FORMAT_MEDIASPACE_ADPCM        = 0x0012 // Videologic's MediaSpace ADPCM
