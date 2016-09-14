@@ -6,6 +6,7 @@ type FileReader struct {
 	config     Config
 	dataLength uint32
 	file       *os.File
+	exp        expander
 }
 
 func NewFileReader(fileName string, config *Config) (*FileReader, error) {
@@ -74,15 +75,16 @@ func (fr *FileReader) readConfig() error {
 		return err
 	}
 
-	var riffSize uint32
-	var ch chunkHeader
+	var (
+		riffSize uint32
+		ch       chunkHeader
+	)
 
 	// RIFF header
 	{
-		if _, err = readAndDecode(fr.file, &ch); err != nil {
+		if _, err := fr.exp.readAndDecode(fr.file, &ch); err != nil {
 			return err
 		}
-
 		if !ch.chunkIdEqual(token_RIFF) {
 			return ErrorItIsNotRiffFile
 		}
@@ -109,7 +111,7 @@ func (fr *FileReader) readConfig() error {
 	ever := true
 	for ever {
 
-		if _, err = readAndDecode(fr.file, &ch); err != nil {
+		if _, err := fr.exp.readAndDecode(fr.file, &ch); err != nil {
 			return err
 		}
 
@@ -121,8 +123,7 @@ func (fr *FileReader) readConfig() error {
 			{
 				var c_data fmtData
 
-				_, err = readAndDecode(fr.file, &c_data)
-				if err != nil {
+				if _, err := fr.exp.readAndDecode(fr.file, &c_data); err != nil {
 					return err
 				}
 
@@ -140,11 +141,8 @@ func (fr *FileReader) readConfig() error {
 			}
 
 		default: // skip other chunk data
-			{
-				_, err = fr.file.Seek(int64(ch.size), os.SEEK_CUR)
-				if err != nil {
-					return err
-				}
+			if _, err = fr.file.Seek(int64(ch.size), os.SEEK_CUR); err != nil {
+				return err
 			}
 		}
 	}

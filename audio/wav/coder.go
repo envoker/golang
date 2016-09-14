@@ -2,44 +2,50 @@ package wav
 
 import "io"
 
-type sizer interface {
-	Size() int
-}
-
 type encoder interface {
-	sizer
-	encode(data []byte) (n int, err error)
+	Size() int
+	Encode(data []byte) (n int, err error)
 }
 
 type decoder interface {
-	sizer
-	decode(data []byte) (n int, err error)
+	Size() int
+	Decode(data []byte) (n int, err error)
 }
 
-func encodeAndWrite(e encoder, w io.Writer) (n int, err error) {
+type expander struct {
+	data []byte
+}
 
-	data := make([]byte, e.Size())
+func (exp *expander) expand(n int) []byte {
+	if len(exp.data) < n {
+		exp.data = make([]byte, n)
+	}
+	return exp.data[:n]
+}
 
-	if n, err = e.encode(data); err != nil {
+func (exp *expander) encodeAndWrite(e encoder, w io.Writer) (n int, err error) {
+
+	data := exp.expand(e.Size())
+
+	if n, err = e.Encode(data); err != nil {
 		return
 	}
 
 	if n, err = w.Write(data[:n]); err != nil {
 		return
 	}
-
-	return
+	return n, nil
 }
 
-func readAndDecode(r io.Reader, d decoder) (n int, err error) {
+func (exp *expander) readAndDecode(r io.Reader, d decoder) (n int, err error) {
 
-	data := make([]byte, d.Size())
+	data := exp.expand(d.Size())
 
 	if n, err = r.Read(data); err != nil {
 		return
 	}
 
-	if n, err = d.decode(data[:n]); err != nil {
+	if n, err = d.Decode(data[:n]); err != nil {
 		return
 	}
 

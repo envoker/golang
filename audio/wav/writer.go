@@ -6,6 +6,7 @@ type FileWriter struct {
 	config     Config
 	dataLength uint32
 	file       *os.File
+	exp        expander
 }
 
 func NewFileWriter(fileName string, config Config) (*FileWriter, error) {
@@ -65,7 +66,7 @@ func (fw *FileWriter) writeConfig() error {
 			size: 0,
 		}
 
-		if _, err = encodeAndWrite(&ch, fw.file); err != nil {
+		if _, err = fw.exp.encodeAndWrite(&ch, fw.file); err != nil {
 			return err
 		}
 
@@ -85,16 +86,14 @@ func (fw *FileWriter) writeConfig() error {
 			size: size_FmtData,
 		}
 
-		if _, err = encodeAndWrite(&ch, fw.file); err != nil {
+		if _, err = fw.exp.encodeAndWrite(&ch, fw.file); err != nil {
 			return err
 		}
 
 		var c_data fmtData
-		if err = c_data.setConfig(fw.config); err != nil {
-			return err
-		}
+		c_data.setConfig(&(fw.config))
 
-		if _, err = encodeAndWrite(&c_data, fw.file); err != nil {
+		if _, err = fw.exp.encodeAndWrite(&c_data, fw.file); err != nil {
 			return err
 		}
 	}
@@ -106,7 +105,7 @@ func (fw *FileWriter) writeConfig() error {
 			size: 0,
 		}
 
-		if _, err = encodeAndWrite(&ch, fw.file); err != nil {
+		if _, err = fw.exp.encodeAndWrite(&ch, fw.file); err != nil {
 			return err
 		}
 	}

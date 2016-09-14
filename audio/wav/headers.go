@@ -45,7 +45,7 @@ func (chunkHeader) Size() int {
 	return size_chunkHeader
 }
 
-func (ch *chunkHeader) encode(data []byte) (n int, err error) {
+func (ch *chunkHeader) Encode(data []byte) (n int, err error) {
 
 	if len(data) < size_chunkHeader {
 		return 0, ErrorWrongDataLen
@@ -57,7 +57,7 @@ func (ch *chunkHeader) encode(data []byte) (n int, err error) {
 	return size_chunkHeader, nil
 }
 
-func (ch *chunkHeader) decode(data []byte) (n int, err error) {
+func (ch *chunkHeader) Decode(data []byte) (n int, err error) {
 
 	if len(data) < size_chunkHeader {
 		return 0, ErrorWrongDataLen
@@ -116,12 +116,7 @@ type fmtData struct {
 	BitsPerSample uint16
 }
 
-func (d *fmtData) setConfig(c Config) error {
-
-	if err := c.checkError(); err != nil {
-		return err
-	}
-
+func (d *fmtData) setConfig(c *Config) {
 	*d = fmtData{
 		AudioFormat:   uint16(c.AudioFormat),
 		Channels:      uint16(c.Channels),
@@ -130,8 +125,6 @@ func (d *fmtData) setConfig(c Config) error {
 		BytesPerSec:   uint32(c.BytesPerSec()),
 		BytesPerBlock: uint16(c.BytesPerBlock()),
 	}
-
-	return nil
 }
 
 func (d *fmtData) getConfig(c *Config) {
@@ -145,7 +138,7 @@ func (fmtData) Size() int {
 	return size_FmtData
 }
 
-func (d *fmtData) encode(data []byte) (n int, err error) {
+func (d *fmtData) Encode(data []byte) (n int, err error) {
 
 	if len(data) < size_FmtData {
 		err = newError("wave config encode: wrong data len")
@@ -162,7 +155,7 @@ func (d *fmtData) encode(data []byte) (n int, err error) {
 	return size_FmtData, nil
 }
 
-func (d *fmtData) decode(data []byte) (n int, err error) {
+func (d *fmtData) Decode(data []byte) (n int, err error) {
 
 	if len(data) < size_FmtData {
 		err = newError("wave config decode: wrong data len")
