@@ -41,7 +41,6 @@ func (fr *FileReader) Close() error {
 	err := fr.file.Close()
 	fr.file = nil
 	fr.dataLength = 0
-
 	return err
 }
 
@@ -88,21 +87,22 @@ func (fr *FileReader) readConfig() error {
 			return err
 		}
 
-		if !ch.id.Equal(token_RIFF) {
+		if ch.Id != token_RIFF {
 			return ErrFileFormat
 		}
 
-		riffSize = ch.size
+		riffSize = ch.Size
 
 		// WAVE
 
-		var format chunkID
+		var format uint32
 
-		if _, err = fr.file.Read(format[:]); err != nil {
+		err = binary.Read(fr.file, binary.LittleEndian, &format)
+		if err != nil {
 			return err
 		}
 
-		if !format.Equal(token_WAVE) {
+		if format != token_WAVE {
 			return ErrFileFormat
 		}
 	}
@@ -118,11 +118,11 @@ func (fr *FileReader) readConfig() error {
 			return err
 		}
 
-		n_riffSize += uint32(size_chunkHeader) + ch.size
+		n_riffSize += uint32(size_chunkHeader) + ch.Size
 
-		switch {
+		switch ch.Id {
 
-		case ch.id.Equal(token_fmt):
+		case token_fmt:
 			{
 				var c_data fmtData
 
@@ -131,21 +131,21 @@ func (fr *FileReader) readConfig() error {
 					return err
 				}
 
-				c_data.getConfig(&(fr.config))
+				fr.config = fmtDataToConfig(c_data)
 
 				f_fmtChunk = true
 			}
 
-		case ch.id.Equal(token_data):
+		case token_data:
 			{
-				fr.dataLength = ch.size
+				fr.dataLength = ch.Size
 				f_dataChunk = true
 				ever = false
 				break
 			}
 
 		default: // skip other chunk data
-			if _, err = fr.file.Seek(int64(ch.size), os.SEEK_CUR); err != nil {
+			if _, err = fr.file.Seek(int64(ch.Size), os.SEEK_CUR); err != nil {
 				return err
 			}
 		}

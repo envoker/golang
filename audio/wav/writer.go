@@ -44,7 +44,6 @@ func (fw *FileWriter) Close() error {
 	err := fw.file.Close()
 	fw.file = nil
 	fw.dataLength = 0
-
 	return err
 }
 
@@ -64,13 +63,14 @@ func (fw *FileWriter) writeConfig() error {
 
 	// RIFF header
 	{
-		ch = chunkHeader{id: token_RIFF, size: 0}
+		ch = chunkHeader{Id: token_RIFF, Size: 0}
 		err := binary.Write(fw.file, binary.LittleEndian, ch)
 		if err != nil {
 			return err
 		}
 
-		if _, err = fw.file.Write(token_WAVE[:]); err != nil {
+		err = binary.Write(fw.file, binary.LittleEndian, token_WAVE)
+		if err != nil {
 			return err
 		}
 	}
@@ -78,8 +78,8 @@ func (fw *FileWriter) writeConfig() error {
 	// fmt chunk
 	{
 		ch = chunkHeader{
-			id:   token_fmt,
-			size: uint32(size_FmtData),
+			Id:   token_fmt,
+			Size: uint32(size_FmtData),
 		}
 
 		err := binary.Write(fw.file, binary.LittleEndian, ch)
@@ -87,9 +87,7 @@ func (fw *FileWriter) writeConfig() error {
 			return err
 		}
 
-		var c_data fmtData
-		c_data.setConfig(&(fw.config))
-
+		c_data := configToFmtData(fw.config)
 		err = binary.Write(fw.file, binary.LittleEndian, c_data)
 		if err != nil {
 			return err
@@ -99,8 +97,8 @@ func (fw *FileWriter) writeConfig() error {
 	// data chunk header
 	{
 		ch = chunkHeader{
-			id:   token_data,
-			size: 0,
+			Id:   token_data,
+			Size: 0,
 		}
 
 		err := binary.Write(fw.file, binary.LittleEndian, ch)

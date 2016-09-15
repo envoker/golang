@@ -1,12 +1,9 @@
 package wav
 
-import (
-	"bytes"
-	"encoding/binary"
-)
+import "encoding/binary"
 
 var (
-	size_chunkID     = binary.Size(chunkID{})
+	size_chunkID     = 4 // sizeof(uint32)
 	size_chunkHeader = binary.Size(chunkHeader{})
 	size_FmtData     = binary.Size(fmtData{})
 
@@ -15,22 +12,20 @@ var (
 	size_FmtChunk   = size_chunkHeader + size_FmtData
 )
 
-type chunkID [4]byte
-
-func (a chunkID) Equal(b chunkID) bool {
-	return bytes.Equal(a[:], b[:])
-}
-
 var (
-	token_RIFF = chunkID{'R', 'I', 'F', 'F'}
-	token_WAVE = chunkID{'W', 'A', 'V', 'E'}
-	token_fmt  = chunkID{'f', 'm', 't', ' '}
-	token_data = chunkID{'d', 'a', 't', 'a'}
+	token_RIFF uint32 = getToken("RIFF")
+	token_WAVE uint32 = getToken("WAVE")
+	token_fmt  uint32 = getToken("fmt ")
+	token_data uint32 = getToken("data")
 )
 
+func getToken(s string) uint32 {
+	return binary.LittleEndian.Uint32([]byte(s))
+}
+
 type chunkHeader struct {
-	id   chunkID
-	size uint32
+	Id   uint32
+	Size uint32
 }
 
 type Config struct {
@@ -80,8 +75,8 @@ type fmtData struct {
 	BitsPerSample uint16
 }
 
-func (d *fmtData) setConfig(c *Config) {
-	*d = fmtData{
+func configToFmtData(c Config) fmtData {
+	return fmtData{
 		AudioFormat:   uint16(c.AudioFormat),
 		Channels:      uint16(c.Channels),
 		SampleRate:    uint32(c.SampleRate),
@@ -91,8 +86,8 @@ func (d *fmtData) setConfig(c *Config) {
 	}
 }
 
-func (d *fmtData) getConfig(c *Config) {
-	*c = Config{
+func fmtDataToConfig(d fmtData) Config {
+	return Config{
 		AudioFormat:    int(d.AudioFormat),
 		Channels:       int(d.Channels),
 		SampleRate:     int(d.SampleRate),
