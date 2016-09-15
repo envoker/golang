@@ -71,7 +71,8 @@ func (fr *FileReader) getConfig(c *Config) {
 
 func (fr *FileReader) readConfig() error {
 
-	if _, err := fr.file.Seek(0, os.SEEK_SET); err != nil {
+	_, err := fr.file.Seek(0, os.SEEK_SET)
+	if err != nil {
 		return err
 	}
 
@@ -82,7 +83,7 @@ func (fr *FileReader) readConfig() error {
 
 	// RIFF header
 	{
-		err := binary.Read(fr.file, binary.LittleEndian, &ch)
+		err = binary.Read(fr.file, binary.LittleEndian, &ch)
 		if err != nil {
 			return err
 		}
@@ -113,7 +114,7 @@ func (fr *FileReader) readConfig() error {
 	ever := true
 	for ever {
 
-		err := binary.Read(fr.file, binary.LittleEndian, &ch)
+		err = binary.Read(fr.file, binary.LittleEndian, &ch)
 		if err != nil {
 			return err
 		}
@@ -126,7 +127,7 @@ func (fr *FileReader) readConfig() error {
 			{
 				var c_data fmtData
 
-				err := binary.Read(fr.file, binary.LittleEndian, &c_data)
+				err = binary.Read(fr.file, binary.LittleEndian, &c_data)
 				if err != nil {
 					return err
 				}
@@ -145,7 +146,8 @@ func (fr *FileReader) readConfig() error {
 			}
 
 		default: // skip other chunk data
-			if _, err = fr.file.Seek(int64(ch.Size), os.SEEK_CUR); err != nil {
+			_, err = fr.file.Seek(int64(ch.Size), os.SEEK_CUR)
+			if err != nil {
 				return err
 			}
 		}

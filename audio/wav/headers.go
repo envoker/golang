@@ -3,11 +3,11 @@ package wav
 import "encoding/binary"
 
 var (
-	size_chunkID     = 4 // sizeof(uint32)
+	size_chunkId     = 4 // uint32
 	size_chunkHeader = binary.Size(chunkHeader{})
 	size_FmtData     = binary.Size(fmtData{})
 
-	size_Format     = size_chunkID
+	size_Format     = size_chunkId
 	size_RiffHeader = size_chunkHeader + size_Format
 	size_FmtChunk   = size_chunkHeader + size_FmtData
 )

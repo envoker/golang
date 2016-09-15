@@ -55,7 +55,8 @@ func (fw *FileWriter) Write(data []byte) (n int, err error) {
 
 func (fw *FileWriter) writeConfig() error {
 
-	if _, err := fw.file.Seek(0, os.SEEK_SET); err != nil {
+	_, err := fw.file.Seek(0, os.SEEK_SET)
+	if err != nil {
 		return err
 	}
 
@@ -64,7 +65,7 @@ func (fw *FileWriter) writeConfig() error {
 	// RIFF header
 	{
 		ch = chunkHeader{Id: token_RIFF, Size: 0}
-		err := binary.Write(fw.file, binary.LittleEndian, ch)
+		err = binary.Write(fw.file, binary.LittleEndian, ch)
 		if err != nil {
 			return err
 		}
@@ -82,7 +83,7 @@ func (fw *FileWriter) writeConfig() error {
 			Size: uint32(size_FmtData),
 		}
 
-		err := binary.Write(fw.file, binary.LittleEndian, ch)
+		err = binary.Write(fw.file, binary.LittleEndian, ch)
 		if err != nil {
 			return err
 		}
@@ -101,7 +102,7 @@ func (fw *FileWriter) writeConfig() error {
 			Size: 0,
 		}
 
-		err := binary.Write(fw.file, binary.LittleEndian, ch)
+		err = binary.Write(fw.file, binary.LittleEndian, ch)
 		if err != nil {
 			return err
 		}
@@ -116,11 +117,14 @@ func (fw *FileWriter) writeDataLength() error {
 
 	// RIFF chunk
 	{
-		pos := int64(size_chunkID)
-		size := uint32(size_Format + size_FmtChunk + size_dataChunk)
+		pos := int64(size_chunkId)
+		_, err := fw.file.Seek(pos, os.SEEK_SET)
+		if err != nil {
+			return err
+		}
 
-		fw.file.Seek(pos, os.SEEK_SET)
-		err := binary.Write(fw.file, binary.LittleEndian, size)
+		size := uint32(size_Format + size_FmtChunk + size_dataChunk)
+		err = binary.Write(fw.file, binary.LittleEndian, size)
 		if err != nil {
 			return err
 		}
@@ -128,12 +132,14 @@ func (fw *FileWriter) writeDataLength() error {
 
 	// data chunk
 	{
+		pos := int64(size_RiffHeader + size_FmtChunk + size_chunkId)
+		_, err := fw.file.Seek(pos, os.SEEK_SET)
+		if err != nil {
+			return err
+		}
+
 		size := fw.dataLength
-		pos := int64(size_RiffHeader + size_FmtChunk + size_chunkID)
-
-		fw.file.Seek(pos, os.SEEK_SET)
-
-		err := binary.Write(fw.file, binary.LittleEndian, size)
+		err = binary.Write(fw.file, binary.LittleEndian, size)
 		if err != nil {
 			return err
 		}
