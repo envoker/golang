@@ -1,6 +1,7 @@
-package wav
+package sample
 
 import (
+	"errors"
 	"io"
 	"math"
 )
@@ -277,7 +278,7 @@ func NewSampleWriter(w io.Writer, bytesPerSample int) (*SampleWriter, error) {
 	case 4:
 		return &SampleWriter{w, new(int32Sampler)}, nil
 	default:
-		return nil, ErrBytesPerSample
+		return nil, errors.New("sample: BytesPerSample")
 	}
 }
 

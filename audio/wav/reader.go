@@ -1,12 +1,14 @@
 package wav
 
-import "os"
+import (
+	"encoding/binary"
+	"os"
+)
 
 type FileReader struct {
 	config     Config
 	dataLength uint32
 	file       *os.File
-	exp        expander
 }
 
 func NewFileReader(fileName string, config *Config) (*FileReader, error) {
@@ -70,8 +72,7 @@ func (fr *FileReader) getConfig(c *Config) {
 
 func (fr *FileReader) readConfig() error {
 
-	_, err := fr.file.Seek(0, os.SEEK_SET)
-	if err != nil {
+	if _, err := fr.file.Seek(0, os.SEEK_SET); err != nil {
 		return err
 	}
 
@@ -82,48 +83,51 @@ func (fr *FileReader) readConfig() error {
 
 	// RIFF header
 	{
-		if _, err := fr.exp.readAndDecode(fr.file, &ch); err != nil {
+		err := binary.Read(fr.file, binary.LittleEndian, &ch)
+		if err != nil {
 			return err
 		}
-		if !ch.chunkIdEqual(token_RIFF) {
-			return ErrorItIsNotRiffFile
+
+		if !ch.id.Equal(token_RIFF) {
+			return ErrFileFormat
 		}
 
 		riffSize = ch.size
 
 		// WAVE
-		{
-			var riffFormat chunkID
 
-			if _, err = fr.file.Read(riffFormat[:]); err != nil {
-				return err
-			}
+		var format chunkID
 
-			if !riffFormat.Equal(token_WAVE) {
-				return ErrorItIsNotRiffFile
-			}
+		if _, err = fr.file.Read(format[:]); err != nil {
+			return err
+		}
+
+		if !format.Equal(token_WAVE) {
+			return ErrFileFormat
 		}
 	}
 
 	var f_fmtChunk, f_dataChunk bool
-	var n_riffSize = uint32(size_Wave)
+	var n_riffSize = uint32(size_Format)
 
 	ever := true
 	for ever {
 
-		if _, err := fr.exp.readAndDecode(fr.file, &ch); err != nil {
+		err := binary.Read(fr.file, binary.LittleEndian, &ch)
+		if err != nil {
 			return err
 		}
 
-		n_riffSize += size_chunkHeader + ch.size
+		n_riffSize += uint32(size_chunkHeader) + ch.size
 
 		switch {
 
-		case ch.chunkIdEqual(token_fmt):
+		case ch.id.Equal(token_fmt):
 			{
 				var c_data fmtData
 
-				if _, err := fr.exp.readAndDecode(fr.file, &c_data); err != nil {
+				err := binary.Read(fr.file, binary.LittleEndian, &c_data)
+				if err != nil {
 					return err
 				}
 
@@ -132,7 +136,7 @@ func (fr *FileReader) readConfig() error {
 				f_fmtChunk = true
 			}
 
-		case ch.chunkIdEqual(token_data):
+		case ch.id.Equal(token_data):
 			{
 				fr.dataLength = ch.size
 				f_dataChunk = true
@@ -148,13 +152,11 @@ func (fr *FileReader) readConfig() error {
 	}
 
 	if (!f_fmtChunk) || (!f_dataChunk) {
-		err = ErrorChunkStructure
-		return err
+		return ErrFileFormat
 	}
 
 	if n_riffSize != riffSize {
-		err = ErrorChunkStructure
-		return err
+		return ErrFileFormat
 	}
 
 	return nil

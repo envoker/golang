@@ -10,8 +10,6 @@ import (
 
 func main() {
 
-	wav.ErrorBytesPerSample
-
 	fileName := "./test.wav"
 
 	TestWaveRead(fileName)

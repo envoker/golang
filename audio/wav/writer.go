@@ -1,12 +1,14 @@
 package wav
 
-import "os"
+import (
+	"encoding/binary"
+	"os"
+)
 
 type FileWriter struct {
 	config     Config
 	dataLength uint32
 	file       *os.File
-	exp        expander
 }
 
 func NewFileWriter(fileName string, config Config) (*FileWriter, error) {
@@ -33,15 +35,17 @@ func NewFileWriter(fileName string, config Config) (*FileWriter, error) {
 
 func (fw *FileWriter) Close() error {
 
-	if fw.file != nil {
-		fw.writeDataLength()
-
-		fw.file.Close()
-		fw.file = nil
-		fw.dataLength = 0
+	if fw.file == nil {
+		return ErrFileWriterClosed
 	}
 
-	return nil
+	fw.writeDataLength()
+
+	err := fw.file.Close()
+	fw.file = nil
+	fw.dataLength = 0
+
+	return err
 }
 
 func (fw *FileWriter) Write(data []byte) (n int, err error) {
@@ -52,8 +56,7 @@ func (fw *FileWriter) Write(data []byte) (n int, err error) {
 
 func (fw *FileWriter) writeConfig() error {
 
-	_, err := fw.file.Seek(0, os.SEEK_SET)
-	if err != nil {
+	if _, err := fw.file.Seek(0, os.SEEK_SET); err != nil {
 		return err
 	}
 
@@ -61,21 +64,14 @@ func (fw *FileWriter) writeConfig() error {
 
 	// RIFF header
 	{
-		ch = chunkHeader{
-			id:   token_RIFF,
-			size: 0,
-		}
-
-		if _, err = fw.exp.encodeAndWrite(&ch, fw.file); err != nil {
+		ch = chunkHeader{id: token_RIFF, size: 0}
+		err := binary.Write(fw.file, binary.LittleEndian, ch)
+		if err != nil {
 			return err
 		}
 
-		// WAVE
-		{
-			var riffFormat = token_WAVE
-			if _, err = fw.file.Write(riffFormat[:]); err != nil {
-				return err
-			}
+		if _, err = fw.file.Write(token_WAVE[:]); err != nil {
+			return err
 		}
 	}
 
@@ -83,17 +79,19 @@ func (fw *FileWriter) writeConfig() error {
 	{
 		ch = chunkHeader{
 			id:   token_fmt,
-			size: size_FmtData,
+			size: uint32(size_FmtData),
 		}
 
-		if _, err = fw.exp.encodeAndWrite(&ch, fw.file); err != nil {
+		err := binary.Write(fw.file, binary.LittleEndian, ch)
+		if err != nil {
 			return err
 		}
 
 		var c_data fmtData
 		c_data.setConfig(&(fw.config))
 
-		if _, err = fw.exp.encodeAndWrite(&c_data, fw.file); err != nil {
+		err = binary.Write(fw.file, binary.LittleEndian, c_data)
+		if err != nil {
 			return err
 		}
 	}
@@ -105,7 +103,8 @@ func (fw *FileWriter) writeConfig() error {
 			size: 0,
 		}
 
-		if _, err = fw.exp.encodeAndWrite(&ch, fw.file); err != nil {
+		err := binary.Write(fw.file, binary.LittleEndian, ch)
+		if err != nil {
 			return err
 		}
 	}
@@ -115,18 +114,16 @@ func (fw *FileWriter) writeConfig() error {
 
 func (fw *FileWriter) writeDataLength() error {
 
-	var data = make([]byte, size_chunkSize)
-
-	size_dataChunk := size_chunkHeader + fw.dataLength
+	size_dataChunk := size_chunkHeader + int(fw.dataLength)
 
 	// RIFF chunk
 	{
-		size := uint32(size_Wave + size_FmtChunk + size_dataChunk)
 		pos := int64(size_chunkID)
+		size := uint32(size_Format + size_FmtChunk + size_dataChunk)
 
-		byteOrder.PutUint32(data, size)
 		fw.file.Seek(pos, os.SEEK_SET)
-		if _, err := fw.file.Write(data); err != nil {
+		err := binary.Write(fw.file, binary.LittleEndian, size)
+		if err != nil {
 			return err
 		}
 	}
@@ -136,9 +133,10 @@ func (fw *FileWriter) writeDataLength() error {
 		size := fw.dataLength
 		pos := int64(size_RiffHeader + size_FmtChunk + size_chunkID)
 
-		byteOrder.PutUint32(data, size)
 		fw.file.Seek(pos, os.SEEK_SET)
-		if _, err := fw.file.Write(data); err != nil {
+
+		err := binary.Write(fw.file, binary.LittleEndian, size)
+		if err != nil {
 			return err
 		}
 	}

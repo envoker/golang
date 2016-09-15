@@ -5,21 +5,17 @@ import (
 	"encoding/binary"
 )
 
-var byteOrder = binary.LittleEndian
+var (
+	size_chunkID     = binary.Size(chunkID{})
+	size_chunkHeader = binary.Size(chunkHeader{})
+	size_FmtData     = binary.Size(fmtData{})
 
-const (
-	size_Uint16      = 2
-	size_Uint32      = 4
-	size_chunkID     = size_Uint32
-	size_chunkSize   = size_Uint32
-	size_chunkHeader = size_chunkID + size_chunkSize
-	size_Wave        = size_Uint32
-	size_RiffHeader  = size_chunkHeader + size_Wave
-	size_FmtData     = (4 * size_Uint16) + (2 * size_Uint32)
-	size_FmtChunk    = size_chunkHeader + size_FmtData
+	size_Format     = size_chunkID
+	size_RiffHeader = size_chunkHeader + size_Format
+	size_FmtChunk   = size_chunkHeader + size_FmtData
 )
 
-type chunkID [size_chunkID]byte
+type chunkID [4]byte
 
 func (a chunkID) Equal(b chunkID) bool {
 	return bytes.Equal(a[:], b[:])
@@ -35,38 +31,6 @@ var (
 type chunkHeader struct {
 	id   chunkID
 	size uint32
-}
-
-func (ch *chunkHeader) chunkIdEqual(id chunkID) bool {
-	return ch.id.Equal(id)
-}
-
-func (chunkHeader) Size() int {
-	return size_chunkHeader
-}
-
-func (ch *chunkHeader) Encode(data []byte) (n int, err error) {
-
-	if len(data) < size_chunkHeader {
-		return 0, ErrorWrongDataLen
-	}
-
-	copy(data[0:4], ch.id[0:4])
-	byteOrder.PutUint32(data[4:8], ch.size)
-
-	return size_chunkHeader, nil
-}
-
-func (ch *chunkHeader) Decode(data []byte) (n int, err error) {
-
-	if len(data) < size_chunkHeader {
-		return 0, ErrorWrongDataLen
-	}
-
-	copy(ch.id[0:4], data[0:4])
-	ch.size = byteOrder.Uint32(data[4:8])
-
-	return size_chunkHeader, nil
 }
 
 type Config struct {
@@ -128,46 +92,10 @@ func (d *fmtData) setConfig(c *Config) {
 }
 
 func (d *fmtData) getConfig(c *Config) {
-	c.AudioFormat = int(d.AudioFormat)
-	c.Channels = int(d.Channels)
-	c.SampleRate = int(d.SampleRate)
-	c.BytesPerSample = int(d.BitsPerSample) / 8
-}
-
-func (fmtData) Size() int {
-	return size_FmtData
-}
-
-func (d *fmtData) Encode(data []byte) (n int, err error) {
-
-	if len(data) < size_FmtData {
-		err = newError("wave config encode: wrong data len")
-		return
+	*c = Config{
+		AudioFormat:    int(d.AudioFormat),
+		Channels:       int(d.Channels),
+		SampleRate:     int(d.SampleRate),
+		BytesPerSample: int(d.BitsPerSample) / 8,
 	}
-
-	byteOrder.PutUint16(data[0:2], d.AudioFormat)
-	byteOrder.PutUint16(data[2:4], d.Channels)
-	byteOrder.PutUint32(data[4:8], d.SampleRate)
-	byteOrder.PutUint32(data[8:12], d.BytesPerSec)
-	byteOrder.PutUint16(data[12:14], d.BytesPerBlock)
-	byteOrder.PutUint16(data[14:16], d.BitsPerSample)
-
-	return size_FmtData, nil
-}
-
-func (d *fmtData) Decode(data []byte) (n int, err error) {
-
-	if len(data) < size_FmtData {
-		err = newError("wave config decode: wrong data len")
-		return
-	}
-
-	d.AudioFormat = byteOrder.Uint16(data[0:2])
-	d.Channels = byteOrder.Uint16(data[2:4])
-	d.SampleRate = byteOrder.Uint32(data[4:8])
-	d.BytesPerSec = byteOrder.Uint32(data[8:12])
-	d.BytesPerBlock = byteOrder.Uint16(data[12:14])
-	d.BitsPerSample = byteOrder.Uint16(data[14:16])
-
-	return size_FmtData, nil
 }

@@ -3,7 +3,7 @@ package main
 import (
 	"math"
 
-	"github.com/envoker/golang/audio/wav"
+	"github.com/envoker/golang/audio/wav/sample"
 )
 
 type Garmonica struct {
@@ -27,7 +27,7 @@ func (ts *toneSampler) NextSample() float32 {
 	return sample
 }
 
-func NewToneSampler(g Garmonica, sampleRate float32) wav.NextSampler {
+func NewToneSampler(g Garmonica, sampleRate float32) sample.NextSampler {
 	return &toneSampler{
 		amplitude: g.Amplitude,
 		phase:     g.Phase,
@@ -37,8 +37,8 @@ func NewToneSampler(g Garmonica, sampleRate float32) wav.NextSampler {
 	}
 }
 
-func MakeSamplers(gs []Garmonica, sampleRate float32) []wav.NextSampler {
-	samplers := make([]wav.NextSampler, len(gs))
+func MakeSamplers(gs []Garmonica, sampleRate float32) []sample.NextSampler {
+	samplers := make([]sample.NextSampler, len(gs))
 	for i, g := range gs {
 		samplers[i] = NewToneSampler(g, sampleRate)
 	}

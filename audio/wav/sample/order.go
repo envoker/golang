@@ -1,4 +1,4 @@
-package wav
+package sample
 
 type littleEndian struct{}
 

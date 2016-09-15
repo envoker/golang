@@ -5,9 +5,10 @@ import (
 	"time"
 
 	"github.com/envoker/golang/audio/wav"
+	"github.com/envoker/golang/audio/wav/sample"
 )
 
-func GenerateWave(fileName string, duration time.Duration, sampleRate float32, bytesPerSample int, samplers []wav.NextSampler) error {
+func GenerateWave(fileName string, duration time.Duration, sampleRate float32, bytesPerSample int, samplers []sample.NextSampler) error {
 
 	Tmax := float32(duration.Seconds())
 
@@ -26,7 +27,7 @@ func GenerateWave(fileName string, duration time.Duration, sampleRate float32, b
 
 	bw := bufio.NewWriterSize(fw, int(c.BytesPerSec()))
 
-	sw, err := wav.NewSampleWriter(bw, int(c.BytesPerSample))
+	sw, err := sample.NewSampleWriter(bw, int(c.BytesPerSample))
 	if err != nil {
 		return err
 	}
