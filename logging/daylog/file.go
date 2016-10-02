@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/envoker/golang/time/date"
+	"github.com/toelsiba/date"
 )
 
 type fileWriter struct {
@@ -29,7 +29,7 @@ func newFileWriter(dir string, prefix string) *fileWriter {
 func (w *fileWriter) writeLine(line []byte) (int, error) {
 
 	t := time.Now()
-	d, _ := date.DateFromTime(t)
+	d, _ := date.FromTime(t)
 
 	if w.file != nil {
 		if !d.Equal(w.d) {

@@ -1,7 +1,7 @@
 package daylog
 
 import (
-	"github.com/envoker/golang/time/date"
+	"github.com/toelsiba/date"
 )
 
 const formatDateFileName = "2006-01-02.log"

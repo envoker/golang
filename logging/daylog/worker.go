@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/envoker/golang/time/date"
+	"github.com/toelsiba/date"
 )
 
 type flusher interface {
@@ -32,14 +32,14 @@ func removeOld(dir string, daysNumber int) error {
 		return err
 	}
 
-	dateNow := date.Now()
+	dateNow := date.CurrentDate()
 
 	for _, fileInfo := range files {
 		if !fileInfo.IsDir() {
 			fileName := fileInfo.Name()
 			dateFile, err := dateFromFileName(fileName)
 			if err == nil {
-				if dateNow.Sub(dateFile) >= daysNumber {
+				if dateFile.DaysTo(dateNow) >= daysNumber {
 					if err := os.Remove(filepath.Join(dir, fileName)); err != nil {
 						log.Println(err)
 					}
