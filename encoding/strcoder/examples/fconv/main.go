@@ -65,9 +65,9 @@ func fileDecode(dest, src string, codec string) error {
 			return err
 		}
 
-		s := d.Decode(data[:n])
+		text := d.Decode(data[:n])
 
-		if _, err = w.WriteString(s); err != nil {
+		if _, err = w.Write(text); err != nil {
 			return err
 		}
 	}
