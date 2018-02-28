@@ -1,6 +1,7 @@
 package der
 
 import (
+	"fmt"
 	"io"
 )
 
@@ -70,21 +71,10 @@ func (n *Node) GetType() TagType {
 }
 
 func (n *Node) CheckType(t TagType) error {
-
-	if n == nil {
-		return newError("Node.CheckType(): node is nil")
+	if n.t.Equal(&t) {
+		return nil
 	}
-
-	var (
-		a = &(n.t)
-		b = &(t)
-	)
-
-	if !a.Equal(b) {
-		return newError("Node.CheckType(): is not equal TagType")
-	}
-
-	return nil
+	return fmt.Errorf("der: node has type %s although expected %s", n.t.String(), t.String())
 }
 
 func (n *Node) EncodeLength() (c int) {
