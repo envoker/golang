@@ -6,33 +6,29 @@ import (
 	"fmt"
 )
 
-func ConvertToString(node *Node) (s string, err error) {
-
-	var buffer bytes.Buffer
-
-	if err = nodeToString(node, &buffer, 0); err != nil {
-		return
+func ConvertToString(n *Node) (string, error) {
+	var buf bytes.Buffer
+	err := nodeToString(n, &buf, 0)
+	if err != nil {
+		return "", err
 	}
-
-	s = string(buffer.Bytes())
-
-	return
+	return buf.String(), nil
 }
 
-func nodeToString(node *Node, buffer *bytes.Buffer, indent int) (err error) {
+func nodeToString(n *Node, buf *bytes.Buffer, indent int) (err error) {
 
 	indentBuff := make([]byte, indent)
 	for i := 0; i < indent; i++ {
 		indentBuff[i] = '\t'
 	}
 
-	if _, err = buffer.Write(indentBuff); err != nil {
+	if _, err = buf.Write(indentBuff); err != nil {
 		return
 	}
 
 	var className string
 
-	switch node.t.class {
+	switch n.t.class {
 	case CLASS_UNIVERSAL:
 		className = "UNIVERSAL"
 	case CLASS_APPLICATION:
@@ -43,38 +39,38 @@ func nodeToString(node *Node, buffer *bytes.Buffer, indent int) (err error) {
 		className = "PRIVATE"
 	}
 
-	s := fmt.Sprintf("%s(%d):", className, int(node.t.tagNumber))
-	if _, err = buffer.WriteString(s); err != nil {
+	s := fmt.Sprintf("%s(%d):", className, int(n.t.tagNumber))
+	if _, err = buf.WriteString(s); err != nil {
 		return
 	}
 
-	if node.t.valueType == VT_PRIMITIVE {
+	if n.t.valueType == VT_PRIMITIVE {
 
-		var pPrimitive *Primitive = node.v.(*Primitive)
+		var pPrimitive *Primitive = n.v.(*Primitive)
 
-		buffer.WriteByte('\t')
+		buf.WriteByte('\t')
 
 		s = hex.EncodeToString(pPrimitive.Bytes())
-		if _, err = buffer.WriteString(s); err != nil {
+		if _, err = buf.WriteString(s); err != nil {
 			return
 		}
 
-		buffer.WriteByte('\n')
+		buf.WriteByte('\n')
 
-	} else if node.t.valueType == VT_CONSTRUCTED {
+	} else if n.t.valueType == VT_CONSTRUCTED {
 
-		buffer.WriteString("\t{\n")
+		buf.WriteString("\t{\n")
 
-		var pConstructed *Constructed = node.v.(*Constructed)
+		var pConstructed *Constructed = n.v.(*Constructed)
 
 		for _, child := range pConstructed.nodes {
-			if err = nodeToString(child, buffer, indent+1); err != nil {
+			if err = nodeToString(child, buf, indent+1); err != nil {
 				return
 			}
 		}
 
-		buffer.Write(indentBuff)
-		buffer.WriteString("}\n")
+		buf.Write(indentBuff)
+		buf.WriteString("}\n")
 	}
 
 	return

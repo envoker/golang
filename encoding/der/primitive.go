@@ -4,29 +4,26 @@ import (
 	"io"
 )
 
-func PrimitiveNewNode(tn TagNumber) (node *Node, err error) {
+func PrimitiveNewNode(tn TagNumber) (*Node, error) {
 
 	var tagType TagType
 	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_PRIMITIVE, tn)
 
-	node = new(Node)
-	if err = node.SetType(tagType); err != nil {
-		return
+	n := new(Node)
+	if err := n.SetType(tagType); err != nil {
+		return nil, err
 	}
 
-	return
+	return n, nil
 }
 
-func PrimitiveCheckNode(tn TagNumber, node *Node) (err error) {
+func PrimitiveCheckNode(tn TagNumber, n *Node) error {
 
 	var tagType TagType
 	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_PRIMITIVE, tn)
 
-	if err = node.CheckType(tagType); err != nil {
-		return
-	}
-
-	return
+	err := n.CheckType(tagType)
+	return err
 }
 
 type Primitive struct {
@@ -49,11 +46,7 @@ func (p *Primitive) Encode(w io.Writer, length int) (n int, err error) {
 		return
 	}
 
-	if n, err = writeFull(w, p.data); err != nil {
-		return
-	}
-
-	return
+	return writeFull(w, p.data)
 }
 
 func (p *Primitive) Decode(r io.Reader, length int) (n int, err error) {
@@ -69,7 +62,6 @@ func (p *Primitive) Decode(r io.Reader, length int) (n int, err error) {
 	}
 
 	data := make([]byte, length)
-
 	n, err = readFull(r, data)
 	if err != nil {
 		return

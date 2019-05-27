@@ -27,34 +27,23 @@ var (
 )
 
 func Marshal(v interface{}) ([]byte, error) {
-
-	node, err := Serialize(v)
+	n, err := Serialize(v)
 	if err != nil {
 		return nil, err
 	}
-
-	buffer := new(bytes.Buffer)
-
-	if _, err = node.Encode(buffer); err != nil {
+	var buf bytes.Buffer
+	if _, err = n.Encode(&buf); err != nil {
 		return nil, err
 	}
-
-	return buffer.Bytes(), nil
+	return buf.Bytes(), nil
 }
 
 func Unmarshal(data []byte, v interface{}) error {
-
-	buffer := bytes.NewBuffer(data)
-
-	node := new(Node)
-	_, err := node.Decode(buffer)
+	r := bytes.NewReader(data)
+	n := new(Node)
+	_, err := n.Decode(r)
 	if err != nil {
 		return err
 	}
-
-	if err = Deserialize(v, node); err != nil {
-		return err
-	}
-
-	return nil
+	return Deserialize(v, n)
 }

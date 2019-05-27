@@ -43,12 +43,10 @@ func boolDeserialize(v reflect.Value, node *Node) error {
 	}
 
 	primitive := node.GetValue().(*Primitive)
-
 	x, err := primitive.GetBool()
 	if err != nil {
 		return err
 	}
-
 	v.SetBool(x)
 
 	return nil

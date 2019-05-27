@@ -8,21 +8,21 @@ import (
 func TestLengthEncodeDecode(t *testing.T) {
 
 	r := newRand()
-	buffer := new(bytes.Buffer)
+	var buf bytes.Buffer
 	var l1, l2 Length
 
 	for i := 0; i < 100000; i++ {
 
 		l1 = Length(r.Int31() >> uint(r.Intn(30)))
 
-		buffer.Reset()
+		buf.Reset()
 
-		n1, err := l1.Encode(buffer)
+		n1, err := l1.Encode(&buf)
 		if err != nil {
 			t.Fatalf("Encode: iter %d", i)
 		}
 
-		n2, err := l2.Decode(buffer)
+		n2, err := l2.Decode(&buf)
 		if err != nil {
 			t.Fatalf("Decode: iter %d", i)
 		}

@@ -14,7 +14,8 @@ import (
 
 func main() {
 
-	fn := testIntDER
+	fn := derHex
+	//fn := testIntDER
 	//fn := testIntJSON
 
 	if err := fn(); err != nil {
@@ -220,7 +221,9 @@ func testIntDER() error {
 		return err
 	}
 
-	var b int16
+	fmt.Printf("%X\n", data)
+
+	var b int32
 
 	err = der.Unmarshal(data, &b)
 	if err != nil {

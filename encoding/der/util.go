@@ -2,18 +2,14 @@ package der
 
 import (
 	"bytes"
+	"fmt"
 	"io"
-	"math/rand"
-	"reflect"
-	"time"
 )
 
-const base = 10
-
 const (
-	sizeOfUint8  = 1
-	sizeOfUint16 = 2
-	sizeOfUint32 = 4
+	//sizeOfUint8  = 1
+	//sizeOfUint16 = 2
+	//sizeOfUint32 = 4
 	sizeOfUint64 = 8
 )
 
@@ -24,209 +20,96 @@ const (
 )
 
 func writeByte(w io.Writer, b byte) error {
-
-	var bs [sizeOfUint8]byte
-
+	var bs [1]byte
 	bs[0] = b
-
-	n, err := w.Write(bs[:])
+	_, err := w.Write(bs[:])
 	if err != nil {
-		return newErrorf("writeByte: %s", err.Error())
+		return err
 	}
-
-	if n != sizeOfUint8 {
-		return newError("writeByte")
-	}
-
 	return nil
 }
 
 func readByte(r io.Reader) (byte, error) {
-
-	var bs [sizeOfUint8]byte
-
-	n, err := r.Read(bs[:])
+	var bs [1]byte
+	_, err := io.ReadFull(r, bs[:])
 	if err != nil {
-		return 0, newErrorf("readByte: %s", err.Error())
+		return 0, err
 	}
-
-	if n != sizeOfUint8 {
-		return 0, newError("readByte")
-	}
-
 	b := bs[0]
-
 	return b, nil
 }
 
 func writeFull(w io.Writer, data []byte) (n int, err error) {
-
-	var k int
-
-	for n < len(data) {
-		k, err = w.Write(data[n:])
-		n += k
-		if err != nil {
-			return n, newErrorf("writeFull: %s", err.Error())
-		}
-	}
-
-	return
+	return w.Write(data)
 }
 
 func readFull(r io.Reader, data []byte) (n int, err error) {
-
-	var k int
-
-	for n < len(data) {
-		k, err = r.Read(data[n:])
-		n += k
-		if err != nil {
-			return n, newErrorf("readFull: %s", err.Error())
-		}
-	}
-
-	return
+	return io.ReadFull(r, data)
 }
 
 // quo = x / y
 // rem = x % y
 func quoRem(x, y int) (quo, rem int) {
-
 	quo = x / y
 	rem = x - quo*y
-
-	return
-}
-
-func newRand() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
-func runeIsDigit(r rune) bool {
-	return (r >= 0x30) && (r <= 0x39)
-}
-
-func runeToDigit(r rune) (digit int, err error) {
-
-	if runeIsDigit(r) {
-		digit = int(r - 0x30)
-	} else {
-		err = newError("runeToDigit")
-	}
 	return
 }
 
 func byteIsDigit(b byte) bool {
-	return (b >= 0x30) && (b <= 0x39)
+	return ('0' <= b) && (b <= '9')
 }
 
-func byteToDigit(b byte) (digit int, err error) {
-
+func byteToDigit(b byte) (digit int, ok bool) {
 	if byteIsDigit(b) {
-		digit = int(b - 0x30)
-	} else {
-		err = newError("ByteToDigit")
+		digit = int(b - '0')
+		return digit, true
 	}
-	return
+	return 0, false
 }
 
-func digitToByte(digit int) (b byte, err error) {
-
-	if (digit >= 0) && (digit <= 9) {
-		b = byte(0x30 + digit)
-	} else {
-		err = newError("DigitToByte")
+func digitToByte(digit int) (b byte, ok bool) {
+	if (0 <= digit) && (digit <= 9) {
+		b = byte('0' + digit)
+		return b, true
 	}
-	return
+	return 0, false
 }
 
-func encodeTwoDigits(buffer *bytes.Buffer, val int) (err error) {
-
-	var b0, b1 byte
-
-	quo, rem := quoRem(val, base)
-	val = quo
-	if b1, err = digitToByte(rem); err != nil {
-		return
-	}
-
-	quo, rem = quoRem(val, base)
-	val = quo
-	if b0, err = digitToByte(rem); err != nil {
-		return
-	}
-
-	if err = buffer.WriteByte(b0); err != nil {
-		return
-	}
-
-	if err = buffer.WriteByte(b1); err != nil {
-		return
-	}
-
-	return
-}
-
-func decodeTwoDigits(buffer *bytes.Buffer) (val int, err error) {
-
-	var (
-		r0, r1 rune
-		size   int
-		digit  int
+func encodeTwoDigits(buf *bytes.Buffer, val int) error {
+	const (
+		n    = 2
+		base = 10
 	)
-
-	// digit 1
-	{
-		if r0, size, err = buffer.ReadRune(); err != nil {
-			return
+	var bs [2]byte
+	var digit int
+	for i := n; i > 0; i-- {
+		val, digit = quoRem(val, base)
+		b, ok := digitToByte(digit)
+		if !ok {
+			return fmt.Errorf("invalid convert digit %d to byte", digit)
 		}
-
-		if size == 0 {
-			err = newError("decodeTwoDigits(): ReadRune(): (size = 0)")
-			return
-		}
-
-		if digit, err = runeToDigit(r0); err != nil {
-			buffer.UnreadRune()
-			return
-		}
-		val = val*base + digit
+		bs[i-1] = b
 	}
-
-	// digit 2
-	{
-		if r1, size, err = buffer.ReadRune(); err != nil {
-			return
-		}
-
-		if size == 0 {
-			err = newError("decodeTwoDigits(): ReadRune(): (size = 0)")
-			return
-		}
-
-		if digit, err = runeToDigit(r1); err != nil {
-			buffer.UnreadRune()
-			return
-		}
-		val = val*base + digit
-	}
-
-	return
+	_, err := buf.Write(bs[:])
+	return err
 }
 
-func isNil(v interface{}) bool {
-	return (v == nil) || (reflect.ValueOf(v).IsNil())
-}
-
-func valueSetZero(v reflect.Value) {
-	zero := reflect.Zero(v.Type())
-	v.Set(zero)
-}
-
-func valueMake(v reflect.Value) {
-	if t := v.Type(); t.Kind() == reflect.Ptr {
-		nv := reflect.New(t.Elem())
-		v.Set(nv)
+func decodeTwoDigits(bs []byte) (int, error) {
+	const (
+		n    = 2
+		base = 10
+	)
+	if len(bs) < 2 {
+		return 0, fmt.Errorf("decodeTwoDigits: insufficient data length, have:%d, want:%d", len(bs), 2)
 	}
+	var value int
+	for i := 0; i < n; i++ {
+		b := bs[i]
+		digit, ok := byteToDigit(b)
+		if !ok {
+			return 0, fmt.Errorf("decodeTwoDigits: invalid convert byte %x to digit", b)
+		}
+		value = value*base + digit
+	}
+	return value, nil
 }

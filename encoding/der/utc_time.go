@@ -2,6 +2,8 @@ package der
 
 import (
 	"bytes"
+	"errors"
+	"fmt"
 	"math/rand"
 	"time"
 )
@@ -17,279 +19,256 @@ YYMMDDhhmmss-hhmm
 
 */
 
+const (
+	timeZoneMin = -12 * 60
+	timeZoneMax = +12 * 60
+)
+
 type UtcTime struct {
 
 	// Date
-	year  int // [ 00 .. 99 ]
-	month int // [ 1 .. 12 ]
-	day   int // [ 1 .. 31 ]
+	year  int // [0..99]
+	month int // [1..12]
+	day   int // [1..31]
 
 	// Time
-	hour int // [ 00 .. 23 ]
-	min  int // [ 00 .. 59 ]
-	sec  int // [ 00 .. 59 ]
+	hour int // [0..23]
+	min  int // [0..59]
+	sec  int // [0..59]
 
 	// Zone
-	zone int // [ -12*60 .. 12*60 ]
+	zone int // [ -12*60 .. +12*60 ]
 
 }
 
 const wrong_UtcTime_TimeZone = false
 
-func (this *UtcTime) IsValid() bool {
+func (p *UtcTime) IsValid() bool {
 
 	// Date
-	if (this.year < 0) || (this.year > 99) {
+	if (p.year < 0) || (p.year > 99) {
 		return false
 	}
 
-	if (this.month < 1) || (this.month > 12) {
+	if (p.month < 1) || (p.month > 12) {
 		return false
 	}
 
-	if (this.day < 1) || (this.day > 31) {
+	if (p.day < 1) || (p.day > 31) {
 		return false
 	}
 
 	// Time
-	if (this.hour < 0) || (this.hour > 23) {
+	if (p.hour < 0) || (p.hour > 23) {
 		return false
 	}
 
-	if (this.min < 0) || (this.min > 59) {
+	if (p.min < 0) || (p.min > 59) {
 		return false
 	}
 
-	if (this.sec < 0) || (this.sec > 59) {
+	if (p.sec < 0) || (p.sec > 59) {
 		return false
 	}
 
 	// Zone
-	if (this.zone < -12*60) || (this.zone > 12*60) {
+	if (p.zone < timeZoneMin) || (timeZoneMax < p.zone) {
 		return false
 	}
 
 	return true
 }
 
-func (this *UtcTime) SetValue(t time.Time) (ok bool) {
+func (p *UtcTime) SetValue(t time.Time) (ok bool) {
 
 	// Date
 	{
 		year, month, day := t.Date()
 
-		switch {
-		case (1950 <= year) && (year < 2000):
-			this.year = year - 1900
-		case (2000 <= year) && (year < 2050):
-			this.year = year - 2000
-		default:
-			ok = false
-			return
-		}
-
-		this.month = int(month)
-		this.day = day
+		p.year = yearCollapse(year)
+		p.month = int(month)
+		p.day = day
 	}
 
 	// Time
 	{
 		hour, min, sec := t.Clock()
 
-		this.hour = hour
-		this.min = min
-		this.sec = sec
+		p.hour = hour
+		p.min = min
+		p.sec = sec
 	}
 
 	// Zone
 	{
 		_, offset := t.Zone()
-
-		this.zone = offset / 60
+		p.zone = offset / 60
 	}
 
-	ok = this.IsValid()
+	ok = p.IsValid()
 
 	return
 }
 
-func (this *UtcTime) GetValue() (t time.Time, ok bool) {
+func (p *UtcTime) GetValue() (t time.Time, ok bool) {
 
-	if !this.IsValid() {
+	if !p.IsValid() {
 		ok = false
 		return
 	}
 
+	// Date
 	var (
-		year  int
-		month time.Month
-		day   int
-
-		hour, min, sec int
-
-		offset int
+		year  = yearExpand(p.year)
+		month = time.Month(p.month)
+		day   = p.day
 	)
 
-	// Date
-	{
-		if this.year < 50 {
-			year = this.year + 2000
-		} else {
-			year = this.year + 1900
-		}
-
-		month = time.Month(this.month)
-		day = this.day
-	}
-
 	// Time
-	{
-		hour = this.hour
-		min = this.min
-		sec = this.sec
-	}
+	var (
+		hour = p.hour
+		min  = p.min
+		sec  = p.sec
+	)
 
 	// Zone
-	{
-		offset = this.zone * 60
-	}
+	var offset = p.zone * 60
 
-	loc := time.FixedZone("UTC", offset)
+	loc := time.FixedZone("EEST", offset)
 	t = time.Date(year, month, day, hour, min, sec, 0, loc)
 	ok = true
 
 	return
 }
 
-func (this *UtcTime) Equal(other *UtcTime) bool {
+func (p *UtcTime) Equal(other *UtcTime) bool {
 
 	// Date
 	{
-		if this.year != other.year {
+		if p.year != other.year {
 			return false
 		}
 
-		if this.month != other.month {
+		if p.month != other.month {
 			return false
 		}
 
-		if this.day != other.day {
+		if p.day != other.day {
 			return false
 		}
 	}
 
 	// Time
 	{
-		if this.hour != other.hour {
+		if p.hour != other.hour {
 			return false
 		}
 
-		if this.min != other.min {
+		if p.min != other.min {
 			return false
 		}
 
-		if this.sec != other.sec {
+		if p.sec != other.sec {
 			return false
 		}
 	}
 
-	if this.zone != other.zone {
+	if p.zone != other.zone {
 		return false
 	}
 
 	return true
 }
 
-func (this *UtcTime) InitRandomInstance(r *rand.Rand) (err error) {
+func (p *UtcTime) InitRandomInstance(r *rand.Rand) error {
 
 	// Date
-	this.year = r.Intn(100)     // [ 00 .. 99 ]
-	this.month = 1 + r.Intn(12) // [ 1 .. 12 ]
-	this.day = 1 + r.Intn(31)   // [ 1 .. 31 ]
+	p.year = r.Intn(100)     // [ 0 .. 99 ]
+	p.month = 1 + r.Intn(12) // [ 1 .. 12 ]
+	p.day = 1 + r.Intn(31)   // [ 1 .. 31 ]
 
 	// Time
-	this.hour = r.Intn(24) // [ 00 .. 23 ]
-	this.min = r.Intn(60)  // [ 00 .. 59 ]
-	this.sec = r.Intn(60)  // [ 00 .. 59 ]
+	p.hour = r.Intn(24) // [ 0 .. 23 ]
+	p.min = r.Intn(60)  // [ 0 .. 59 ]
+	p.sec = r.Intn(60)  // [ 0 .. 59 ]
 
 	// Zone
-	switch zi := r.Intn(3); zi {
-	case 0:
-		this.zone = 0
-	case 1:
-		this.zone = r.Intn(12 * 60)
-	case 2:
-		this.zone = -r.Intn(12 * 60)
+	if randBool(r) {
+		p.zone = 0
+	} else {
+		p.zone = randIntRange(r, timeZoneMin, timeZoneMax+1)
 	}
 
-	return
+	return nil
 }
 
-func (this *UtcTime) Encode() (bs []byte, err error) {
+func (p *UtcTime) Encode() ([]byte, error) {
 
-	if !this.IsValid() {
+	var err error
+
+	if !p.IsValid() {
 		err = newError("UtcTime.Encode(): is not valid")
-		return
+		return nil, err
 	}
 
-	buffer := new(bytes.Buffer)
+	// MaxLen = 17
+	// len("YYMMDDhhmmss+hhmm") = 17
+	// len("YYMMDDhhmmss-hhmm") = 17
+	buf := bytes.NewBuffer(make([]byte, 0, 17))
 
 	// Date ( YYMMDD )
 	{
-		if err = encodeTwoDigits(buffer, this.year); err != nil {
-			return
+		if err = encodeTwoDigits(buf, p.year); err != nil {
+			return nil, err
 		}
 
-		if err = encodeTwoDigits(buffer, this.month); err != nil {
-			return
+		if err = encodeTwoDigits(buf, p.month); err != nil {
+			return nil, err
 		}
 
-		if err = encodeTwoDigits(buffer, this.day); err != nil {
-			return
+		if err = encodeTwoDigits(buf, p.day); err != nil {
+			return nil, err
 		}
 	}
 
 	// Time ( hhmm, hhmmss )
 	{
-		if err = encodeTwoDigits(buffer, this.hour); err != nil {
-			return
+		if err = encodeTwoDigits(buf, p.hour); err != nil {
+			return nil, err
 		}
 
-		if err = encodeTwoDigits(buffer, this.min); err != nil {
-			return
+		if err = encodeTwoDigits(buf, p.min); err != nil {
+			return nil, err
 		}
 
-		if this.sec != 0 {
-			if err = encodeTwoDigits(buffer, this.sec); err != nil {
-				return
+		if p.sec != 0 {
+			if err = encodeTwoDigits(buf, p.sec); err != nil {
+				return nil, err
 			}
 		}
 	}
 
 	// Zone ( Z, +hhmm, -hhmm )
 	{
-		offset := this.zone
-
+		offset := p.zone
 		if offset == 0 {
-
-			if err = buffer.WriteByte('Z'); err != nil {
-				return
+			if err = buf.WriteByte('Z'); err != nil {
+				return nil, err
 			}
-
 		} else {
 
 			switch {
 			case (offset < 0):
 
-				if err = buffer.WriteByte('-'); err != nil {
-					return
+				if err = buf.WriteByte('-'); err != nil {
+					return nil, err
 				}
 				offset = -offset
 
 			case (offset > 0):
 
-				if err = buffer.WriteByte('+'); err != nil {
-					return
+				if err = buf.WriteByte('+'); err != nil {
+					return nil, err
 				}
 			}
 
@@ -298,137 +277,160 @@ func (this *UtcTime) Encode() (bs []byte, err error) {
 			hour := quo
 			min := rem
 
-			if err = encodeTwoDigits(buffer, hour); err != nil {
-				return
+			if err = encodeTwoDigits(buf, hour); err != nil {
+				return nil, err
 			}
-			if err = encodeTwoDigits(buffer, min); err != nil {
-				return
+			if err = encodeTwoDigits(buf, min); err != nil {
+				return nil, err
 			}
 		}
 	}
 
-	bs = buffer.Bytes()
-
-	return
+	return buf.Bytes(), nil
 }
 
-func (this *UtcTime) Decode(bs []byte) (err error) {
+func (p *UtcTime) Decode(bs []byte) error {
+
+	// YYMMDDhhmm - 10 bytes
+	if len(bs) < 10 {
+		return fmt.Errorf("Decode UtcTime: insufficient data length: have:%d, want:%d", len(bs), 10)
+	}
 
 	var (
-		r    rune
-		size int
+		//r   rune
+		err error
 	)
-
-	buffer := new(bytes.Buffer)
-	buffer.Write(bs)
 
 	// Date ( YYMMDD )
 	{
-		if this.year, err = decodeTwoDigits(buffer); err != nil {
-			return
+		// Year
+		p.year, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
 		}
+		bs = bs[2:]
 
-		if this.month, err = decodeTwoDigits(buffer); err != nil {
-			return
+		// Month
+		p.month, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
 		}
+		bs = bs[2:]
 
-		if this.day, err = decodeTwoDigits(buffer); err != nil {
-			return
+		// Day
+		p.day, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
 		}
+		bs = bs[2:]
 	}
 
 	// Time ( hhmm, hhmmss )
 	{
-		if this.hour, err = decodeTwoDigits(buffer); err != nil {
-			return
+		// Hour
+		p.hour, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
 		}
+		bs = bs[2:]
 
-		if this.min, err = decodeTwoDigits(buffer); err != nil {
-			return
+		// Min
+		p.min, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
 		}
+		bs = bs[2:]
 
-		if r, size, err = buffer.ReadRune(); err != nil {
-			return
-		}
-
-		// second
+		// Sec
 		{
-			this.sec = 0
-
-			if size > 0 {
-
-				if err = buffer.UnreadRune(); err != nil {
-					return
-				}
-
-				if (r >= '0') && (r <= '9') {
-
-					if this.sec, err = decodeTwoDigits(buffer); err != nil {
-						return
-					}
+			p.sec = 0
+			if len(bs) >= 2 {
+				p.sec, err = decodeTwoDigits(bs)
+				if err == nil {
+					bs = bs[2:]
 				}
 			}
 		}
 	}
 
 	// Zone ( Z, +hhmm, -hhmm )
-	{
-		if r, size, err = buffer.ReadRune(); err != nil {
-
-			if wrong_UtcTime_TimeZone {
-
-				t := time.Now()
-
-				_, offset := t.Zone()
-
-				this.zone = offset / 60
-
-				return nil
-			}
-
-			return
+	if len(bs) == 0 {
+		if wrong_UtcTime_TimeZone {
+			t := time.Now()
+			_, offset := t.Zone()
+			p.zone = offset / 60
+			return nil
 		}
+		return errors.New("Decode UtcTime: insufficient data length")
+	}
+	sign := bs[0]
+	bs = bs[1:]
 
+	{
 		var offset int
 
-		if r == 'Z' {
+		if sign == 'Z' {
 
 			offset = 0
 
 		} else {
-
-			var isNegative bool
-
-			switch r {
+			var negative bool
+			switch sign {
 			case '-':
-				isNegative = true
-
+				negative = true
 			case '+':
-				isNegative = false
-
+				negative = false
 			default:
-				err = newError("Wrong utc value")
-				return
+				return newError("Wrong utc value")
 			}
 
 			var hour, min int
 
-			if hour, err = decodeTwoDigits(buffer); err != nil {
-				return
+			if hour, err = decodeTwoDigits(bs); err != nil {
+				return err
 			}
+			bs = bs[2:]
 
-			if min, err = decodeTwoDigits(buffer); err != nil {
-				return
+			if min, err = decodeTwoDigits(bs); err != nil {
+				return err
 			}
+			bs = bs[2:]
 
 			offset = (hour*60 + min)
-			if isNegative {
+			if negative {
 				offset = -offset
 			}
 		}
 
-		this.zone = offset
+		p.zone = offset
 	}
 
-	return
+	return nil
+}
+
+// year: [0..99]
+func yearExpand(year int) int {
+	if inInterval(year, 0, 50) {
+		return year + 2000
+	}
+	if inInterval(year, 50, 100) {
+		return year + 1900
+	}
+	return -1
+}
+
+// year: [1950..2049]
+func yearCollapse(year int) int {
+	if inInterval(year, 2000, 2050) {
+		return year - 2000
+	}
+	if inInterval(year, 1950, 2000) {
+		return year - 1900
+	}
+	return -1
+}
+
+// Value a is in [min..max)
+func inInterval(a int, min, max int) bool {
+	return (min <= a) && (a < max)
 }
