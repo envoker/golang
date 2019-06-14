@@ -6,21 +6,21 @@ func NewNull() *Null {
 	return &Null{}
 }
 
-func (this *Null) encodeIndent(bw BufferWriter, indent int) error {
+func (p *Null) encodeIndent(bw BufferWriter, indent int) error {
 
 	_, err := bw_WriteIndent(bw, indent)
 	if err != nil {
 		return err
 	}
 
-	if err = this.encode(bw); err != nil {
+	if err = p.encode(bw); err != nil {
 		return err
 	}
 
 	return nil
 }
 
-func (this *Null) encode(bw BufferWriter) error {
+func (p *Null) encode(bw BufferWriter) error {
 
 	if _, err := bw.Write(data_Null); err != nil {
 		return err
@@ -29,7 +29,7 @@ func (this *Null) encode(bw BufferWriter) error {
 	return nil
 }
 
-func (this *Null) decode(br BufferReader) error {
+func (p *Null) decode(br BufferReader) error {
 
 	_, err := br_SkipSpaces(br)
 	if err != nil {

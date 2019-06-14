@@ -61,17 +61,14 @@ func NewNumber(v interface{}) *Number {
 }
 
 func (n *Number) Int64() (int64, error) {
-
 	return strconv.ParseInt(n.s, 10, 64)
 }
 
 func (n *Number) Uint64() (uint64, error) {
-
 	return strconv.ParseUint(n.s, 10, 64)
 }
 
 func (n *Number) Float64() (float64, error) {
-
 	return strconv.ParseFloat(n.s, 64)
 }
 

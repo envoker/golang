@@ -5,15 +5,13 @@ type Array struct {
 }
 
 func NewArray(size int) *Array {
-
-	if size < 0 {
-		size = 0
+	if size <= 0 {
+		return new(Array)
 	}
 	return &Array{make([]Value, size)}
 }
 
 func (a *Array) Len() int {
-
 	return len(a.vs)
 }
 
@@ -70,7 +68,7 @@ func (a *Array) Append(v Value) error {
 	return nil
 }
 
-func (a *Array) encodeIndent(bw BufferWriter, indent int) (err error) {
+func (a *Array) encodeIndent(bw BufferWriter, indent int) error {
 
 	//bw_WriteIndent(bw, indent)
 	bw.WriteByte(rc_OpenSquareBracket)
@@ -90,8 +88,8 @@ func (a *Array) encodeIndent(bw BufferWriter, indent int) (err error) {
 			bw_WriteIndent(bw, indent+1)
 		}
 
-		if err = v.encodeIndent(bw, indent+1); err != nil {
-			return
+		if err := v.encodeIndent(bw, indent+1); err != nil {
+			return err
 		}
 	}
 
@@ -99,10 +97,10 @@ func (a *Array) encodeIndent(bw BufferWriter, indent int) (err error) {
 	bw_WriteIndent(bw, indent)
 	bw.WriteByte(rc_CloseSquareBracket)
 
-	return
+	return nil
 }
 
-func (a *Array) encode(bw BufferWriter) (err error) {
+func (a *Array) encode(bw BufferWriter) error {
 
 	bw.WriteByte(rc_OpenSquareBracket)
 
@@ -115,26 +113,26 @@ func (a *Array) encode(bw BufferWriter) (err error) {
 			fWriteComma = true
 		}
 
-		if err = c.encode(bw); err != nil {
-			return
+		if err := c.encode(bw); err != nil {
+			return err
 		}
 	}
 
 	bw.WriteByte(rc_CloseSquareBracket)
 
-	return
+	return nil
 }
 
-func (a *Array) decode(br BufferReader) (err error) {
+func (a *Array) decode(br BufferReader) error {
 
-	if _, err = br_SkipSpaces(br); err != nil {
-		return
+	_, err := br_SkipSpaces(br)
+	if err != nil {
+		return err
 	}
 
 	var ok bool
 	if ok = br_SkipRune(br, rc_OpenSquareBracket); !ok {
-		err = newError("Array.decode: SkipRune('[')")
-		return
+		return newError("Array.decode: SkipRune('[')")
 	}
 
 	var (
@@ -144,9 +142,8 @@ func (a *Array) decode(br BufferReader) (err error) {
 	)
 
 	for {
-
 		if _, err = br_SkipSpaces(br); err != nil {
-			return
+			return err
 		}
 
 		if ok = br_SkipRune(br, rc_CloseSquareBracket); ok {
@@ -163,7 +160,7 @@ func (a *Array) decode(br BufferReader) (err error) {
 		}
 
 		if _, err = br_SkipSpaces(br); err != nil {
-			return
+			return err
 		}
 
 		v, err := valueFromBuffer(br)
@@ -178,12 +175,11 @@ func (a *Array) decode(br BufferReader) (err error) {
 		cs = append(cs, v)
 	}
 
-	if decodeResult {
-		a.vs = cs
-	} else {
-		err = newError("Array.decode")
-		return
+	if !decodeResult {
+		return newError("Array.decode")
 	}
 
-	return
+	a.vs = cs
+
+	return nil
 }

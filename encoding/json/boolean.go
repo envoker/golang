@@ -1,44 +1,44 @@
 package json
 
-type Boolean bool
-
-func NewBoolean(val bool) *Boolean {
-	b := Boolean(val)
-	return &b
+type Boolean struct {
+	val bool
 }
 
-func (this *Boolean) encodeIndent(bw BufferWriter, indent int) error {
+func NewBoolean(val bool) *Boolean {
+	return &Boolean{val}
+}
 
+func (b *Boolean) Bool() bool {
+	if b == nil {
+		return false
+	}
+	return b.val
+}
+
+func (b *Boolean) SetBool(val bool) {
+	b.val = val
+}
+
+func (b *Boolean) encodeIndent(bw BufferWriter, indent int) error {
 	_, err := bw_WriteIndent(bw, indent)
 	if err != nil {
 		return err
 	}
-
-	if err = this.encode(bw); err != nil {
-		return err
-	}
-
-	return nil
+	return b.encode(bw)
 }
 
-func (this *Boolean) encode(bw BufferWriter) error {
-
-	var bs []byte
-
-	if *this {
-		bs = data_True
+func (b *Boolean) encode(bw BufferWriter) error {
+	var data []byte
+	if b.val {
+		data = data_True
 	} else {
-		bs = data_False
+		data = data_False
 	}
-
-	if _, err := bw.Write(bs); err != nil {
-		return err
-	}
-
-	return nil
+	_, err := bw.Write(data)
+	return err
 }
 
-func (this *Boolean) decode(br BufferReader) error {
+func (b *Boolean) decode(br BufferReader) error {
 
 	_, err := br_SkipSpaces(br)
 	if err != nil {
@@ -53,10 +53,10 @@ func (this *Boolean) decode(br BufferReader) error {
 
 	switch s {
 	case "true", "True", "TRUE":
-		*this = true
+		b.val = true
 
 	case "false", "False", "FALSE":
-		*this = false
+		b.val = false
 
 	default:
 		return newError("Boolean.fromString: is not Boolean")

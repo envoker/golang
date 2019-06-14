@@ -1,174 +1,73 @@
 package json
 
-type keyValue struct {
-	key   string
-	value Value
-}
+import (
+	"fmt"
+)
 
-func (this *keyValue) encodeIndent(bw BufferWriter, indent int) (err error) {
-
-	if this == nil {
-		err = newError("keyValue.encode: this is nil")
-		return
-	}
-
-	bw_WriteIndent(bw, indent)
-
-	s := NewString(this.key)
-	if err = s.encode(bw); err != nil {
-		return
-	}
-
-	bw.WriteByte(rc_Colon)
-
-	if valueIsConstructed(this.value) {
-		//bw_WriteEndOfLine(bw)
-		bw.WriteByte(rc_Space)
-		err = this.value.encodeIndent(bw, indent)
-	} else {
-		bw.WriteByte(rc_Space)
-		err = this.value.encode(bw)
-	}
-
-	if err != nil {
-		return
-	}
-
-	return
-}
-
-func (this *keyValue) encode(bw BufferWriter) (err error) {
-
-	if this == nil {
-		err = newError("keyValue.encode: this is nil")
-		return
-	}
-
-	s := NewString(this.key)
-	if err = s.encode(bw); err != nil {
-		return
-	}
-
-	if err = bw.WriteByte(rc_Colon); err != nil {
-		return
-	}
-
-	if err = this.value.encode(bw); err != nil {
-		return
-	}
-
-	return
-}
-
-func (this *keyValue) decode(br BufferReader) (err error) {
-
-	if this == nil {
-		err = newError("keyValue.decode: this is nil")
-		return
-	}
-
-	s := NewString("")
-	if err = s.decode(br); err != nil {
-		return
-	}
-
-	this.key = string(s.bs)
-
-	if _, err = br_SkipSpaces(br); err != nil {
-		return
-	}
-
-	if !br_SkipRune(br, rc_Colon) {
-		err = newError("keyValue.decode")
-		return
-	}
-
-	if _, err = br_SkipSpaces(br); err != nil {
-		return
-	}
-
-	v, err := valueFromBuffer(br)
-	if err != nil {
-		return err
-	}
-
-	if err = v.decode(br); err != nil {
-		return
-	}
-
-	this.value = v
-
-	return
-}
-
-//-----------------------------------------------------------------
 type Object struct {
-	ps []*keyValue
+	kvs []*keyVal
 }
 
 func NewObject() *Object {
-	return &Object{}
+	return new(Object)
 }
 
-func (this *Object) Len() int {
-
-	return len(this.ps)
+func (p *Object) Len() int {
+	return len(p.kvs)
 }
 
-func (this *Object) getIndex(key string) int {
-
-	for i, p := range this.ps {
-		if p.key == key {
+func (p *Object) indexByKey(key string) int {
+	for i, kv := range p.kvs {
+		if kv.key == key {
 			return i
 		}
 	}
-
 	return -1
 }
 
-func (this *Object) Set(key string, newValue Value) (oldValue Value, ok bool) {
-
-	if index := this.getIndex(key); index != -1 {
-
-		kv := this.ps[index]
-
-		oldValue = kv.value
-		kv.value = newValue
-
-	} else {
-
-		kv := &keyValue{
-			key:   key,
-			value: newValue,
+func (p *Object) Set(key string, newValue Value) (oldValue Value) {
+	index := p.indexByKey(key)
+	if index == -1 {
+		kv := &keyVal{
+			key: key,
+			val: newValue,
 		}
-
-		this.ps = append(this.ps, kv)
+		p.kvs = append(p.kvs, kv)
+		return nil
 	}
-
-	ok = true
-
-	return
+	kv := p.kvs[index]
+	oldValue = kv.val
+	kv.val = newValue
+	return oldValue
 }
 
-func (this *Object) Get(key string) (v Value, ok bool) {
-
-	if index := this.getIndex(key); index != -1 {
-
-		kv := this.ps[index]
-
-		v = kv.value
-		ok = true
+func (p *Object) Get(key string) (Value, bool) {
+	index := p.indexByKey(key)
+	if index == -1 {
+		return nil, false
 	}
-
-	return
+	kv := p.kvs[index]
+	return kv.val, true
 }
 
-func (this *Object) encodeIndent(bw BufferWriter, indent int) (err error) {
-
-	if this == nil {
-		err = newError("Object.encode: this is nil")
+func (p *Object) Del(key string) {
+	index := p.indexByKey(key)
+	if index == -1 {
 		return
 	}
+	copy(p.kvs[index:], p.kvs[index+1:])
+	p.kvs = p.kvs[:len(p.kvs)-1]
+}
+
+func (p *Object) Range(f func(key string, val Value) bool) {
+	for _, kv := range p.kvs {
+		if !f(kv.key, kv.val) {
+			return
+		}
+	}
+}
+
+func (p *Object) encodeIndent(bw BufferWriter, indent int) error {
 
 	//bw_WriteIndent(bw, indent)
 	bw.WriteByte(rc_OpenCurlyBracket)
@@ -176,7 +75,7 @@ func (this *Object) encodeIndent(bw BufferWriter, indent int) (err error) {
 
 	fWriteComma := false
 
-	for _, p := range this.ps {
+	for _, kv := range p.kvs {
 
 		if fWriteComma {
 			bw.WriteByte(rc_Comma)
@@ -185,8 +84,8 @@ func (this *Object) encodeIndent(bw BufferWriter, indent int) (err error) {
 			fWriteComma = true
 		}
 
-		if err = p.encodeIndent(bw, indent+1); err != nil {
-			return
+		if err := kv.encodeIndent(bw, indent+1); err != nil {
+			return err
 		}
 	}
 
@@ -194,20 +93,15 @@ func (this *Object) encodeIndent(bw BufferWriter, indent int) (err error) {
 	bw_WriteIndent(bw, indent)
 	bw.WriteByte(rc_CloseCurlyBracket)
 
-	return
+	return nil
 }
 
-func (this *Object) encode(bw BufferWriter) (err error) {
-
-	if this == nil {
-		err = newError("Object.encode: this is nil")
-		return
-	}
+func (p *Object) encode(bw BufferWriter) error {
 
 	bw.WriteByte(rc_OpenCurlyBracket)
 
 	fWriteComma := false
-	for _, p := range this.ps {
+	for _, kv := range p.kvs {
 
 		if fWriteComma {
 			bw.WriteByte(rc_Comma)
@@ -215,39 +109,39 @@ func (this *Object) encode(bw BufferWriter) (err error) {
 			fWriteComma = true
 		}
 
-		if err = p.encode(bw); err != nil {
-			return
+		if err := kv.encode(bw); err != nil {
+			return err
 		}
 	}
 
 	bw.WriteByte(rc_CloseCurlyBracket)
 
-	return
+	return nil
 }
 
-func (this *Object) decode(br BufferReader) (err error) {
+func (p *Object) decode(br BufferReader) error {
 
-	if _, err = br_SkipSpaces(br); err != nil {
-		return
+	_, err := br_SkipSpaces(br)
+	if err != nil {
+		return err
 	}
 
 	var ok bool
 
 	if ok = br_SkipRune(br, rc_OpenCurlyBracket); !ok {
-		err = newError("Object.decode: SkipRune('{')")
-		return
+		return newError("Object.decode: SkipRune('{')")
 	}
 
 	var (
 		fSkipComma   bool
 		decodeResult bool
-		ps           []*keyValue
+		kvs          []*keyVal
 	)
 
 	for {
-
-		if _, err = br_SkipSpaces(br); err != nil {
-			return
+		_, err = br_SkipSpaces(br)
+		if err != nil {
+			return err
 		}
 
 		if ok = br_SkipRune(br, rc_CloseCurlyBracket); ok {
@@ -263,49 +157,50 @@ func (this *Object) decode(br BufferReader) (err error) {
 			fSkipComma = true
 		}
 
-		p := new(keyValue)
-		if err = p.decode(br); err != nil {
-			return
+		kv := new(keyVal)
+		if err = kv.decode(br); err != nil {
+			return err
 		}
-
-		ps = append(ps, p)
+		kvs = append(kvs, kv)
 	}
 
-	if decodeResult {
-		this.ps = ps
-	} else {
-		err = newError("Object.decode")
-		return
+	if !decodeResult {
+		return newError("Object.decode")
 	}
 
-	return
+	p.kvs = kvs
+
+	return nil
 }
 
-func (this *Object) ChildSerialize(name string, s Serializer) error {
-
-	v, err := s.SerializeJSON()
+func (p *Object) ChildSerialize(name string, data interface{}) error {
+	v, err := encodeData(data)
 	if err != nil {
 		return err
 	}
-
-	_, ok := this.Set(name, v)
-	if !ok {
-		return newError("Object.ChildSerialize")
-	}
-
+	p.Set(name, v)
 	return nil
 }
 
-func (this *Object) ChildDeserialize(name string, d Deserializer) error {
-
-	v, ok := this.Get(name)
+func (p *Object) ChildDeserialize(name string, data interface{}) error {
+	v, ok := p.Get(name)
 	if !ok {
-		return newError("Object.ChildDeserialize")
+		return fmt.Errorf("object hasn't key %q", name)
 	}
-
-	if err := d.DeserializeJSON(v); err != nil {
-		return err
-	}
-
-	return nil
+	return decodeData(v, data)
 }
+
+// type Child struct {
+// 	Name  string
+// 	Value interface{}
+// }
+
+// func (p *Object) ChildsSerialize(cs []Child) error {
+// 	for _, c := range cs {
+// 		err := p.ChildSerialize(c.Name, c.Value)
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	return nil
+// }

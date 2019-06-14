@@ -6,36 +6,30 @@ import (
 )
 
 type String struct {
-	bs []byte
+	val string
 }
 
 func NewString(s string) *String {
-	return &String{[]byte(s)}
+	return &String{val: s}
 }
 
-func (this *String) String() string {
-	return string(this.bs)
+func (s *String) String() string {
+	return s.val
 }
 
-func (this *String) Bytes() []byte {
-	return this.bs
+func (s *String) Bytes() []byte {
+	return []byte(s.val)
 }
 
-func (this *String) encodeIndent(bw BufferWriter, indent int) error {
-
+func (s *String) encodeIndent(bw BufferWriter, indent int) error {
 	_, err := bw_WriteIndent(bw, indent)
 	if err != nil {
 		return err
 	}
-
-	if err = this.encode(bw); err != nil {
-		return err
-	}
-
-	return nil
+	return s.encode(bw)
 }
 
-func (this *String) encode(bw BufferWriter) error {
+func (s *String) encode(bw BufferWriter) error {
 
 	err := bw.WriteByte(rc_DoubleQuotes)
 	if err != nil {
@@ -44,7 +38,7 @@ func (this *String) encode(bw BufferWriter) error {
 
 	var (
 		bs_data = []byte{'\\', 0} // Backslash data
-		data    = this.bs
+		data    = []byte(s.val)
 	)
 
 	for len(data) > 0 {
@@ -92,10 +86,11 @@ func (this *String) encode(bw BufferWriter) error {
 	return nil
 }
 
-func (this *String) decode(br BufferReader) (err error) {
+func (s *String) decode(br BufferReader) error {
 
-	if _, err = br_SkipSpaces(br); err != nil {
-		return
+	_, err := br_SkipSpaces(br)
+	if err != nil {
+		return err
 	}
 
 	var (
@@ -107,8 +102,7 @@ func (this *String) decode(br BufferReader) (err error) {
 
 	var ok bool
 	if ok = br_SkipRune(br, rc_DoubleQuotes); !ok {
-		err = newError("String.decode")
-		return
+		return newError("String.decode")
 	}
 
 	strBuffer := new(bytes.Buffer)
@@ -116,7 +110,7 @@ func (this *String) decode(br BufferReader) (err error) {
 	for {
 
 		if r, size, err = br.ReadRune(); err != nil {
-			return
+			return err
 		}
 
 		if size == 0 {
@@ -144,12 +138,12 @@ func (this *String) decode(br BufferReader) (err error) {
 
 			if fBackslash {
 				if _, err = strBuffer.WriteRune(rc_Backslash); err != nil {
-					return
+					return err
 				}
 			}
 
 			if _, err = strBuffer.WriteRune(r); err != nil {
-				return
+				return err
 			}
 
 			prevIsBackslash = false
@@ -163,19 +157,18 @@ func (this *String) decode(br BufferReader) (err error) {
 					prevIsBackslash = true
 				} else {
 					if _, err = strBuffer.WriteRune(r); err != nil {
-						return
+						return err
 					}
 				}
 			}
 		}
 	}
 
-	if decodeResult {
-		this.bs = strBuffer.Bytes()
-	} else {
-		err = newError("String.decode")
-		return
+	if !decodeResult {
+		return newError("String.decode")
 	}
 
-	return
+	s.val = strBuffer.String()
+
+	return nil
 }

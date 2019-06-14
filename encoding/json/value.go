@@ -7,17 +7,14 @@ type Value interface {
 }
 
 func valueIsConstructed(v Value) bool {
-
-	if v != nil {
-		if _, ok := v.(*Array); ok {
-			return true
-		}
-		if _, ok := v.(*Object); ok {
-			return true
-		}
+	switch v.(type) {
+	case *Array:
+		return true
+	case *Object:
+		return true
+	default:
+		return false
 	}
-
-	return false
 }
 
 //---------------------------------------------------------------------------------
