@@ -10,15 +10,15 @@ type Serializer interface {
 }
 
 type Deserializer interface {
-	DeserializeDER(*Node) error
+	DeserializeDER(n *Node) error
 }
 
 type ContextSerializer interface {
-	ContextSerializeDER(tn TagNumber) (*Node, error)
+	ContextSerializeDER(tag int) (*Node, error)
 }
 
 type ContextDeserializer interface {
-	ContextDeserializeDER(tn TagNumber, node *Node) error
+	ContextDeserializeDER(tag int, n *Node) error
 }
 
 var (

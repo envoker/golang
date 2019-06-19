@@ -10,9 +10,9 @@ type Node struct {
 	v ValueCoder
 }
 
-func NewNode(class Class, valueType ValueType, tagNumber TagNumber) (*Node, error) {
+func NewNode(class int, valueType ValueType, tag int) (*Node, error) {
 
-	var t TagType = TagType{class, valueType, tagNumber}
+	var t TagType = TagType{class, valueType, tag}
 	if !t.IsValid() {
 		return nil, newError("NewNode(): TagType is not valid")
 	}
@@ -77,15 +77,13 @@ func (n *Node) CheckType(t TagType) error {
 	return fmt.Errorf("der: node has type %s although expected %s", n.t.String(), t.String())
 }
 
-func (n *Node) EncodeLength() (c int) {
-
-	c = n.t.EncodeLength()
-	valueLength := n.v.EncodeLength()
+func (n *Node) EncodeSize() int {
+	size := n.t.EncodeSize()
+	valueLength := n.v.EncodeSize()
 	L := Length(valueLength)
-	c += L.EncodeLength()
-	c += valueLength
-
-	return
+	size += L.EncodeSize()
+	size += valueLength
+	return size
 }
 
 func (n *Node) Encode(w io.Writer) (c int, err error) {
@@ -96,7 +94,7 @@ func (n *Node) Encode(w io.Writer) (c int, err error) {
 	}
 
 	var cn int
-	var valueLength int
+	var valueSize int
 
 	// 	Type
 	{
@@ -108,9 +106,9 @@ func (n *Node) Encode(w io.Writer) (c int, err error) {
 
 	//	Length
 	{
-		valueLength = n.v.EncodeLength()
+		valueSize = n.v.EncodeSize()
 
-		L := Length(valueLength)
+		L := Length(valueSize)
 
 		if cn, err = L.Encode(w); err != nil {
 			return
@@ -120,7 +118,7 @@ func (n *Node) Encode(w io.Writer) (c int, err error) {
 
 	//	Value
 	{
-		if cn, err = n.v.Encode(w, valueLength); err != nil {
+		if cn, err = n.v.Encode(w, valueSize); err != nil {
 			return
 		}
 		c += cn
@@ -180,8 +178,8 @@ func NewNodeSequence() (*Node, error) {
 	return NewNode(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
 }
 
-func CheckNodeSequence(node *Node) error {
+func CheckNodeSequence(n *Node) error {
 	var tagType TagType
 	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
-	return node.CheckType(tagType)
+	return n.CheckType(tagType)
 }

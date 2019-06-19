@@ -7,32 +7,33 @@ import (
 )
 
 type TagType struct {
-	class     Class
+	class     int
 	valueType ValueType
-	tagNumber TagNumber
+	tag       int
 }
 
-func NewTagType(class Class, valueType ValueType, tagNumber TagNumber) *TagType {
-	return &TagType{class, valueType, tagNumber}
+func NewTagType(class int, valueType ValueType, tag int) *TagType {
+	return &TagType{class, valueType, tag}
 }
 
 func (t *TagType) String() string {
 	const format = `{ "Class": "%s", "Constructed": %t, "Number": %d }`
-	return fmt.Sprintf(format, t.class.String(),
+	return fmt.Sprintf(format,
+		classToString(t.class),
 		(t.valueType == VT_CONSTRUCTED),
-		t.tagNumber)
+		t.tag,
+	)
 }
 
-func (t *TagType) GetTagNumber() TagNumber {
-
-	return t.tagNumber
+func (t *TagType) GetTag() int {
+	return t.tag
 }
 
 func (t TagType) IsValid() bool {
 
-	if !t.class.IsValid() {
-		return false
-	}
+	// if !t.class.IsValid() {
+	// 	return false
+	// }
 
 	if !t.valueType.IsValid() {
 		return false
@@ -41,16 +42,16 @@ func (t TagType) IsValid() bool {
 	return true
 }
 
-func (t *TagType) Init(class Class, valueType ValueType, tagNumber TagNumber) {
-	if t != nil {
-
-		t.class = class
-		t.valueType = valueType
-		t.tagNumber = tagNumber
+func (t *TagType) Init(class int, valueType ValueType, tag int) {
+	if t == nil {
+		return
 	}
+	t.class = class
+	t.valueType = valueType
+	t.tag = tag
 }
 
-func (t *TagType) Check(class Class, valueType ValueType, tagNumber TagNumber) (err error) {
+func (t *TagType) Check(class int, valueType ValueType, tag int) (err error) {
 
 	if t.class != class {
 		err = newError("TagType.Check(): class not equal")
@@ -62,44 +63,40 @@ func (t *TagType) Check(class Class, valueType ValueType, tagNumber TagNumber) (
 		return
 	}
 
-	if t.tagNumber != tagNumber {
-		err = newError("TagType.Check(): tagNumber not equal")
+	if t.tag != tag {
+		err = newError("TagType.Check(): tag not equal")
 		return
 	}
 
 	return
 }
 
-func (t *TagType) EncodeLength() (n int) {
-
-	tag_number := t.tagNumber
-
+func (t *TagType) EncodeSize() int {
+	var size int
+	tag := t.tag
 	switch {
-
-	case (tag_number < 0x1F):
-		n = 1
-	case (tag_number < 0x80):
-		n = 2
-	case (tag_number < 0x4000):
-		n = 3
-	case (tag_number < 0x200000):
-		n = 4
-	case (tag_number < 0x10000000):
-		n = 5
+	case (tag < 0x1F):
+		size = 1
+	case (tag < 0x80):
+		size = 2
+	case (tag < 0x4000):
+		size = 3
+	case (tag < 0x200000):
+		size = 4
+	case (tag < 0x10000000):
+		size = 5
 	default:
-		n = 6
+		size = 6
 	}
-
-	return
+	return size
 }
 
 func (t *TagType) Encode(w io.Writer) (n int, err error) {
 
 	var (
-		b          byte
-		tag_number int
-		count      int
-		shift      uint
+		b     byte
+		count int
+		shift uint
 	)
 
 	if t == nil {
@@ -130,11 +127,11 @@ func (t *TagType) Encode(w io.Writer) (n int, err error) {
 		b |= 0x20
 	}
 
-	tag_number = int(t.tagNumber)
+	tag := t.tag
 
-	if tag_number < 0x1F {
+	if tag < 0x1F {
 
-		b |= byte(tag_number)
+		b |= byte(tag)
 		if err = writeByte(w, b); err != nil {
 			return
 		}
@@ -148,13 +145,13 @@ func (t *TagType) Encode(w io.Writer) (n int, err error) {
 	}
 
 	switch {
-	case (tag_number < 0x80):
+	case (tag < 0x80):
 		count = 1
-	case (tag_number < 0x4000):
+	case (tag < 0x4000):
 		count = 2
-	case (tag_number < 0x200000):
+	case (tag < 0x200000):
 		count = 3
-	case (tag_number < 0x10000000):
+	case (tag < 0x10000000):
 		count = 4
 	default:
 		count = 5
@@ -163,14 +160,14 @@ func (t *TagType) Encode(w io.Writer) (n int, err error) {
 	shift = uint(7 * (count - 1))
 	for i := 0; i < count-1; i++ {
 
-		b = byte(((tag_number >> shift) & 0x7F) | 0x80)
+		b = byte(((tag >> shift) & 0x7F) | 0x80)
 		if err = writeByte(w, b); err != nil {
 			return
 		}
 		shift -= 7
 	}
 
-	b = byte(tag_number & 0x7F)
+	b = byte(tag & 0x7F)
 	if err = writeByte(w, b); err != nil {
 		return
 	}
@@ -183,8 +180,7 @@ func (t *TagType) Encode(w io.Writer) (n int, err error) {
 func (t *TagType) Decode(r io.Reader) (n int, err error) {
 
 	var (
-		b          byte
-		tag_number int
+		b byte
 	)
 
 	if t == nil {
@@ -216,20 +212,21 @@ func (t *TagType) Decode(r io.Reader) (n int, err error) {
 
 	if (b & 0x1F) != 0x1F {
 
-		t.tagNumber = TagNumber(b & 0x1F)
+		t.tag = int(b & 0x1F)
 		n = 1
 		return
 	}
 
+	var tag int
 	for i := 0; i < 5; i++ {
 
 		if b, err = readByte(r); err != nil {
 			return
 		}
 
-		tag_number = (tag_number << 7) | int(b&0x7F)
+		tag = (tag << 7) | int(b&0x7F)
 		if (b & 0x80) == 0x00 {
-			t.tagNumber = TagNumber(tag_number)
+			t.tag = tag
 			n = i + 2
 			return
 		}
@@ -266,20 +263,20 @@ func (t *TagType) InitRandomInstance(r *rand.Rand) {
 
 	//	tagNumber
 	{
-		number := 0
+		var tag int
 		switch countBytes := r.Intn(5); countBytes {
 		case 0:
-			number = r.Intn(0x80)
+			tag = r.Intn(0x80)
 		case 1:
-			number = r.Intn(0x4000)
+			tag = r.Intn(0x4000)
 		case 2:
-			number = r.Intn(0x200000)
+			tag = r.Intn(0x200000)
 		case 3:
-			number = r.Intn(0x10000000)
+			tag = r.Intn(0x10000000)
 		default:
-			number = r.Intn(0x7FFFFFFF)
+			tag = r.Intn(0x7FFFFFFF)
 		}
-		t.tagNumber = TagNumber(number)
+		t.tag = tag
 	}
 }
 
@@ -293,7 +290,7 @@ func (a *TagType) Equal(b *TagType) bool {
 		return false
 	}
 
-	if a.tagNumber != b.tagNumber {
+	if a.tag != b.tag {
 		return false
 	}
 

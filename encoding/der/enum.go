@@ -1,37 +1,37 @@
 package der
 
-func EnumSerialize(x int64) (*Node, error) {
+func EnumSerialize(e int) (*Node, error) {
 
 	var t TagType
 	t.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_ENUMERATED)
 
-	node := new(Node)
-	if err := node.SetType(t); err != nil {
+	n := new(Node)
+	if err := n.SetType(t); err != nil {
 		return nil, err
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetInt(x)
+	primitive := n.GetValue().(*Primitive)
+	primitive.SetInt(int64(e))
 
-	return node, nil
+	return n, nil
 }
 
-func EnumDeserialize(node *Node) (int64, error) {
+func EnumDeserialize(n *Node) (int, error) {
 
 	var t TagType
 	t.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_ENUMERATED)
 
-	err := node.CheckType(t)
+	err := n.CheckType(t)
 	if err != nil {
 		return 0, err
 	}
 
-	primitive := node.GetValue().(*Primitive)
+	primitive := n.GetValue().(*Primitive)
 
-	x, err := primitive.GetInt()
+	e, err := primitive.GetInt()
 	if err != nil {
 		return 0, err
 	}
 
-	return x, nil
+	return int(e), nil
 }

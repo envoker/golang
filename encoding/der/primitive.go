@@ -4,10 +4,10 @@ import (
 	"io"
 )
 
-func PrimitiveNewNode(tn TagNumber) (*Node, error) {
+func PrimitiveNewNode(tag int) (*Node, error) {
 
 	var tagType TagType
-	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_PRIMITIVE, tn)
+	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_PRIMITIVE, tag)
 
 	n := new(Node)
 	if err := n.SetType(tagType); err != nil {
@@ -17,10 +17,10 @@ func PrimitiveNewNode(tn TagNumber) (*Node, error) {
 	return n, nil
 }
 
-func PrimitiveCheckNode(tn TagNumber, n *Node) error {
+func PrimitiveCheckNode(tag int, n *Node) error {
 
 	var tagType TagType
-	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_PRIMITIVE, tn)
+	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_PRIMITIVE, tag)
 
 	err := n.CheckType(tagType)
 	return err
@@ -30,7 +30,7 @@ type Primitive struct {
 	data []byte
 }
 
-func (p *Primitive) EncodeLength() int {
+func (p *Primitive) EncodeSize() int {
 	return len(p.data)
 }
 

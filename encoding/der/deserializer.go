@@ -147,9 +147,9 @@ func structFieldDeserialize(container Container, v reflect.Value, finfo *fieldIn
 
 	if finfo.tag != nil {
 
-		tn := TagNumber(*(finfo.tag))
+		tag := *(finfo.tag)
 
-		cs := container.ChildByNumber(tn)
+		cs := container.ChildByTag(tag)
 		if cs == nil {
 			if finfo.optional {
 				valueSetZero(v)
@@ -158,7 +158,7 @@ func structFieldDeserialize(container Container, v reflect.Value, finfo *fieldIn
 			return errors.New("Deserializer is nil")
 		}
 
-		err := ConstructedCheckNode(tn, cs)
+		err := ConstructedCheckNode(tag, cs)
 		if err != nil {
 			return err
 		}

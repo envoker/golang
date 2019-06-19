@@ -151,9 +151,9 @@ func structFieldSerialize(container Container, v reflect.Value, finfo *fieldInfo
 
 	if finfo.tag != nil {
 
-		tn := TagNumber(*(finfo.tag))
+		tag := *(finfo.tag)
 
-		cs, err := ConstructedNewNode(tn)
+		cs, err := ConstructedNewNode(tag)
 		if err != nil {
 			return err
 		}

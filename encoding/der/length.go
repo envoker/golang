@@ -4,7 +4,7 @@ import "io"
 
 type Length int
 
-func (pl *Length) EncodeLength() (n int) {
+func (pl *Length) EncodeSize() (n int) {
 
 	if pl == nil {
 		return

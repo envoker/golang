@@ -50,13 +50,14 @@ func (p *Object) Get(key string) (Value, bool) {
 	return kv.val, true
 }
 
-func (p *Object) Del(key string) {
+func (p *Object) Del(key string) bool {
 	index := p.indexByKey(key)
 	if index == -1 {
-		return
+		return false
 	}
 	copy(p.kvs[index:], p.kvs[index+1:])
 	p.kvs = p.kvs[:len(p.kvs)-1]
+	return true
 }
 
 func (p *Object) Range(f func(key string, val Value) bool) {

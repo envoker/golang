@@ -39,7 +39,7 @@ func nodeToString(n *Node, buf *bytes.Buffer, indent int) (err error) {
 		className = "PRIVATE"
 	}
 
-	s := fmt.Sprintf("%s(%d):", className, int(n.t.tagNumber))
+	s := fmt.Sprintf("%s(%d):", className, int(n.t.tag))
 	if _, err = buf.WriteString(s); err != nil {
 		return
 	}

@@ -1,58 +1,42 @@
 package der
 
 import (
+	"fmt"
 	"io"
 )
 
-type Coder interface {
-	EncodeLength() (n int)
-	Encode(w io.Writer) (n int, err error)
-	Decode(r io.Reader) (n int, err error)
-}
+// type Coder interface {
+// 	EncodeSize() (n int)
+// 	Encode(w io.Writer) (n int, err error)
+// 	Decode(r io.Reader) (n int, err error)
+// }
 
 type ValueCoder interface {
-	EncodeLength() (n int)
+	EncodeSize() (n int)
 	Encode(w io.Writer, length int) (n int, err error)
 	Decode(r io.Reader, length int) (n int, err error)
 }
 
-type Class int
-
 const (
-	_ Class = iota
-
-	CLASS_UNIVERSAL
-	CLASS_APPLICATION
-	CLASS_CONTEXT_SPECIFIC
-	CLASS_PRIVATE
+	CLASS_UNIVERSAL        = 0
+	CLASS_APPLICATION      = 1
+	CLASS_CONTEXT_SPECIFIC = 2
+	CLASS_PRIVATE          = 3
 )
 
-const (
-	min_Class = CLASS_UNIVERSAL
-	max_Class = CLASS_PRIVATE
-)
-
-func (c Class) IsValid() bool {
-
-	return (min_Class <= c) && (c <= max_Class)
-}
-
-func (c Class) String() string {
-
-	var s string
-
-	switch c {
+func classToString(class int) string {
+	switch class {
 	case CLASS_UNIVERSAL:
-		s = "Universal"
+		return "Universal"
 	case CLASS_APPLICATION:
-		s = "Application"
+		return "Application"
 	case CLASS_CONTEXT_SPECIFIC:
-		s = "Context Specific"
+		return "Context-Specific"
 	case CLASS_PRIVATE:
-		s = "Private"
+		return "Private"
+	default:
+		return fmt.Sprintf("Class(%d)", class)
 	}
-
-	return s
 }
 
 type ValueType int
@@ -74,17 +58,15 @@ func (val ValueType) IsValid() bool {
 	return (min_ValueType <= val) && (val <= max_ValueType)
 }
 
-type TagNumber uint
-
-// Universal types
+// Universal types (tags)
 const (
-	UT_BOOLEAN      TagNumber = 0x01
-	UT_INTEGER      TagNumber = 0x02
-	UT_BIT_STRING   TagNumber = 0x03
-	UT_OCTET_STRING TagNumber = 0x04
-	UT_NULL         TagNumber = 0x05
-	UT_ENUMERATED   TagNumber = 0x0A
-	UT_UTF8_STRING  TagNumber = 0x0C
-	UT_SEQUENCE     TagNumber = 0x10
-	UT_UTC_TIME     TagNumber = 0x17
+	UT_BOOLEAN      = 1  // 0x01
+	UT_INTEGER      = 2  // 0x02
+	UT_BIT_STRING   = 3  // 0x03
+	UT_OCTET_STRING = 4  // 0x04
+	UT_NULL         = 5  // 0x05
+	UT_ENUMERATED   = 10 // 0x0A
+	UT_UTF8_STRING  = 12 // 0x0C
+	UT_SEQUENCE     = 16 // 0x10
+	UT_UTC_TIME     = 23 // 0x17
 )
