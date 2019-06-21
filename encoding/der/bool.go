@@ -2,6 +2,8 @@ package der
 
 import (
 	"reflect"
+
+	"github.com/envoker/golang/encoding/der/coda"
 )
 
 func boolEncode(x bool) []byte {
@@ -21,33 +23,39 @@ func boolDecode(data []byte) (bool, error) {
 
 func boolSerialize(v reflect.Value) (*Node, error) {
 
-	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_BOOLEAN)
-	if err != nil {
-		return nil, err
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_BOOLEAN,
+		IsCompound: false,
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetBool(v.Bool())
+	n := new(Node)
+	n.SetHeader(h)
 
-	return node, nil
+	n.data = boolEncode(v.Bool())
+
+	return n, nil
 }
 
-func boolDeserialize(v reflect.Value, node *Node) error {
+func boolDeserialize(v reflect.Value, n *Node) error {
 
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_BOOLEAN)
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_BOOLEAN,
+		IsCompound: false,
+	}
 
-	err := node.CheckType(tagType)
+	err := n.CheckHeader(h)
 	if err != nil {
 		return err
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	x, err := primitive.GetBool()
+	b, err := boolDecode(n.data)
 	if err != nil {
 		return err
 	}
-	v.SetBool(x)
+
+	v.SetBool(b)
 
 	return nil
 }

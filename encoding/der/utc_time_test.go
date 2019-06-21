@@ -12,7 +12,7 @@ func TestTimeEncodeDecode(t *testing.T) {
 		err        error
 	)
 
-	r := newRand()
+	r := newRandNow()
 
 	const n = 100
 	for i := 0; i < n; i++ {

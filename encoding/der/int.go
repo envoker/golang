@@ -4,6 +4,8 @@ import (
 	"encoding/binary"
 	"math"
 	"reflect"
+
+	"github.com/envoker/golang/encoding/der/coda"
 )
 
 var byteOrder = binary.BigEndian
@@ -96,42 +98,56 @@ func uintDecode(data []byte) (uint64, error) {
 
 func uintSerialize(v reflect.Value) (*Node, error) {
 
-	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_INTEGER,
+		IsCompound: false,
+	}
+
+	n := new(Node)
+	err := n.SetHeader(h)
 	if err != nil {
 		return nil, err
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetUint(v.Uint())
+	n.data = uintEncode(v.Uint())
 
-	return node, nil
+	return n, nil
 }
 
 func intSerialize(v reflect.Value) (*Node, error) {
 
-	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_INTEGER,
+		IsCompound: false,
+	}
+
+	n := new(Node)
+	err := n.SetHeader(h)
 	if err != nil {
 		return nil, err
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	primitive.SetInt(v.Int())
+	n.data = intEncode(v.Int())
 
-	return node, nil
+	return n, nil
 }
 
-func uintDeserialize(v reflect.Value, node *Node) error {
+func uintDeserialize(v reflect.Value, n *Node) error {
 
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_INTEGER,
+		IsCompound: false,
+	}
 
-	err := node.CheckType(tagType)
+	err := n.CheckHeader(h)
 	if err != nil {
 		return err
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	x, err := primitive.GetUint()
+	x, err := uintDecode(n.data)
 	if err != nil {
 		return err
 	}
@@ -160,18 +176,20 @@ func uintDeserialize(v reflect.Value, node *Node) error {
 	return nil
 }
 
-func intDeserialize(v reflect.Value, node *Node) error {
+func intDeserialize(v reflect.Value, n *Node) error {
 
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_INTEGER,
+		IsCompound: false,
+	}
 
-	err := node.CheckType(tagType)
+	err := n.CheckHeader(h)
 	if err != nil {
 		return err
 	}
 
-	primitive := node.GetValue().(*Primitive)
-	x, err := primitive.GetInt()
+	x, err := intDecode(n.data)
 	if err != nil {
 		return err
 	}

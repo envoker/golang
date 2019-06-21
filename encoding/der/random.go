@@ -5,8 +5,16 @@ import (
 	"time"
 )
 
-func newRand() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
+func newRandSeed(seed int64) *rand.Rand {
+	return rand.New(rand.NewSource(seed))
+}
+
+func newRandTime(t time.Time) *rand.Rand {
+	return newRandSeed(t.UnixNano())
+}
+
+func newRandNow() *rand.Rand {
+	return newRandTime(time.Now())
 }
 
 func randBool(r *rand.Rand) bool {

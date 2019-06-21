@@ -1,185 +1,301 @@
 package der
 
 import (
+	"errors"
 	"fmt"
-	"io"
+
+	"github.com/envoker/golang/encoding/der/coda"
 )
 
+/*
+
+golang asn1:
+
+type RawValue struct {
+	Class, Tag int
+	IsCompound bool
+	Bytes      []byte
+	FullBytes  []byte // includes the tag and length
+}
+
+*/
+
 type Node struct {
-	t TagType
-	v ValueCoder
+	class      int
+	tag        int
+	isCompound bool
+
+	data  []byte  // Primitive:   (isCompound = false)
+	nodes []*Node // Constructed: (isCompound = true)
 }
 
-func NewNode(class int, valueType ValueType, tag int) (*Node, error) {
-
-	var t TagType = TagType{class, valueType, tag}
-	if !t.IsValid() {
-		return nil, newError("NewNode(): TagType is not valid")
+func NewNode(class int, tag int) *Node {
+	return &Node{
+		class: class,
+		tag:   tag,
 	}
-
-	var n Node
-
-	switch t.valueType {
-	case VT_PRIMITIVE:
-		n.v = new(Primitive)
-
-	case VT_CONSTRUCTED:
-		n.v = new(Constructed)
-	default:
-		return nil, newError("NewNode(): TagType is wrong")
-	}
-
-	n.t = t
-
-	return &n, nil
 }
 
-func (n *Node) GetValue() (v ValueCoder) {
-
-	if n != nil {
-		v = n.v
+func CheckNode(n *Node, class int, tag int) error {
+	if n.class != class {
+		return fmt.Errorf("class: %d != %d", n.class, class)
 	}
-
-	return v
+	if n.tag != tag {
+		return fmt.Errorf("tag: %d != %d", n.tag, tag)
+	}
+	return nil
 }
 
-func (n *Node) SetType(t TagType) error {
+func (n *Node) GetTag() int {
+	return n.tag
+}
 
-	if n == nil {
-		return newError("Node.SetType(): Node is nil")
+func (n *Node) getHeader() coda.Header {
+	return coda.Header{
+		Class:      n.class,
+		Tag:        n.tag,
+		IsCompound: n.isCompound,
+	}
+}
+
+func (n *Node) IsPrimitive() bool {
+	return !(n.isCompound)
+}
+
+func (n *Node) IsConstructed() bool {
+	return (n.isCompound)
+}
+
+func (n *Node) SetHeader(h coda.Header) error {
+	*n = Node{
+		class:      h.Class,
+		tag:        h.Tag,
+		isCompound: h.IsCompound,
+	}
+	return nil
+}
+
+func (n *Node) CheckHeader(h coda.Header) error {
+	k := n.getHeader()
+	if !coda.EqualHeaders(k, h) {
+		return errors.New("der: invalid header")
+	}
+	return nil
+}
+
+func EncodeNode(data []byte, n *Node) (rest []byte, err error) {
+
+	header := n.getHeader()
+	data, err = coda.EncodeHeader(data, &header)
+	if err != nil {
+		return nil, err
 	}
 
-	if !t.IsValid() {
-		return newError("Node.SetType(): type is not valid")
+	value, err := encodeValue(n)
+	if err != nil {
+		return nil, err
 	}
 
-	switch t.valueType {
-	case VT_PRIMITIVE:
-		n.v = new(Primitive)
-
-	case VT_CONSTRUCTED:
-		n.v = new(Constructed)
+	length := len(value)
+	data, err = coda.EncodeLength(data, length)
+	if err != nil {
+		return nil, err
 	}
 
-	n.t = t
+	data = append(data, value...)
+	return data, err
+}
+
+func DecodeNode(data []byte, n *Node) (rest []byte, err error) {
+
+	var header coda.Header
+	data, err = coda.DecodeHeader(data, &header)
+	if err != nil {
+		return nil, err
+	}
+	err = n.SetHeader(header)
+	if err != nil {
+		return nil, err
+	}
+
+	var length int
+	data, err = coda.DecodeLength(data, &length)
+	if err != nil {
+		return nil, err
+	}
+	if len(data) < length {
+		return nil, errors.New("insufficient data length")
+	}
+
+	err = decodeValue(data[:length], n)
+	if err != nil {
+		return nil, err
+	}
+
+	rest = data[length:]
+
+	return rest, nil
+}
+
+func encodeValue(n *Node) ([]byte, error) {
+	if n.IsPrimitive() {
+		return cloneBytes(n.data), nil
+	}
+	return encodeNodes(n.nodes)
+}
+
+func decodeValue(data []byte, n *Node) error {
+
+	if n.IsPrimitive() {
+		n.data = cloneBytes(data)
+		return nil
+	}
+
+	ns, err := decodeNodes(data)
+	if err != nil {
+		return err
+	}
+	n.nodes = ns
 
 	return nil
 }
 
-func (n *Node) GetType() TagType {
-	return n.t
+var ErrNodeIsNotConstructed = errors.New("node is not constructed")
+
+func (n *Node) FirstChild() (*Node, error) {
+	if n.IsPrimitive() {
+		return nil, ErrNodeIsNotConstructed
+	}
+	if len(n.nodes) == 0 {
+		return nil, errors.New("Node nas not children")
+	}
+	return n.nodes[0], nil
 }
 
-func (n *Node) CheckType(t TagType) error {
-	if n.t.Equal(&t) {
+func (n *Node) AppendChild(child *Node) error {
+	if n.IsPrimitive() {
+		return ErrNodeIsNotConstructed
+	}
+	if child == nil {
 		return nil
 	}
-	return fmt.Errorf("der: node has type %s although expected %s", n.t.String(), t.String())
+	n.nodes = append(n.nodes, child)
+	return nil
 }
 
-func (n *Node) EncodeSize() int {
-	size := n.t.EncodeSize()
-	valueLength := n.v.EncodeSize()
-	L := Length(valueLength)
-	size += L.EncodeSize()
-	size += valueLength
-	return size
+func (n *Node) ChildCount() (int, error) {
+	if n.IsPrimitive() {
+		return 0, ErrNodeIsNotConstructed
+	}
+	return len(n.nodes), nil
 }
 
-func (n *Node) Encode(w io.Writer) (c int, err error) {
-
-	if n == nil {
-		err = newError("Node.Encode(): Node is nil")
-		return
-	}
-
-	var cn int
-	var valueSize int
-
-	// 	Type
-	{
-		if cn, err = n.t.Encode(w); err != nil {
+func (n *Node) RangeChildren(f func(child *Node) bool) {
+	for _, child := range n.nodes {
+		if !f(child) {
 			return
 		}
-		c += cn
 	}
-
-	//	Length
-	{
-		valueSize = n.v.EncodeSize()
-
-		L := Length(valueSize)
-
-		if cn, err = L.Encode(w); err != nil {
-			return
-		}
-		c += cn
-	}
-
-	//	Value
-	{
-		if cn, err = n.v.Encode(w, valueSize); err != nil {
-			return
-		}
-		c += cn
-	}
-
-	return
 }
 
-func (n *Node) Decode(r io.Reader) (c int, err error) {
+//----------------------------------------------------------------------------
+var ErrNodeIsConstructed = errors.New("node is constructed")
 
-	if n == nil {
-		err = newError("Node.Decode(): Node is nil")
-		return
+func (n *Node) SetBool(b bool) error {
+	if n.isCompound {
+		return ErrNodeIsConstructed
 	}
-
-	var cn int
-	var valueLength int
-
-	// 	Type
-	{
-		var T TagType
-		if cn, err = T.Decode(r); err != nil {
-			return
-		}
-
-		if err = n.SetType(T); err != nil {
-			return
-		}
-
-		c += cn
-	}
-
-	//	Length
-	{
-		var L Length
-
-		if cn, err = L.Decode(r); err != nil {
-			return
-		}
-		c += cn
-
-		valueLength = int(L)
-	}
-
-	//	Value
-	{
-		if cn, err = n.v.Decode(r, valueLength); err != nil {
-			return
-		}
-		c += cn
-	}
-
-	return
+	n.data = boolEncode(b)
+	return nil
 }
 
-func NewNodeSequence() (*Node, error) {
-	return NewNode(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
+func (n *Node) GetBool() (bool, error) {
+	if n.isCompound {
+		return false, ErrNodeIsConstructed
+	}
+	return boolDecode(n.data)
 }
 
-func CheckNodeSequence(n *Node) error {
-	var tagType TagType
-	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
-	return n.CheckType(tagType)
+func (n *Node) SetInt(i int64) error {
+	if n.isCompound {
+		return ErrNodeIsConstructed
+	}
+	n.data = intEncode(i)
+	return nil
+}
+
+func (n *Node) GetInt() (int64, error) {
+	if n.isCompound {
+		return 0, ErrNodeIsConstructed
+	}
+	return intDecode(n.data)
+}
+
+func (n *Node) SetBytes(bs []byte) error {
+	if n.isCompound {
+		return ErrNodeIsConstructed
+	}
+	n.data = bs
+	return nil
+}
+
+func (n *Node) GetBytes() ([]byte, error) {
+	if n.isCompound {
+		return nil, ErrNodeIsConstructed
+	}
+	return n.data, nil
+}
+
+//----------------------------------------------------------------------------
+func (n *Node) Iterator() *Iterator {
+	return newIterator(n.nodes)
+}
+
+func NewSequence() (*Node, error) {
+
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_SEQUENCE,
+		IsCompound: true,
+	}
+
+	n := new(Node)
+	err := n.SetHeader(h)
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
+}
+
+func IsSequence(n *Node) error {
+
+	h := coda.Header{
+		Class:      CLASS_UNIVERSAL,
+		Tag:        TAG_SEQUENCE,
+		IsCompound: true,
+	}
+
+	return n.CheckHeader(h)
+}
+
+type Iterator struct {
+	nodes []*Node
+	index int
+}
+
+func newIterator(nodes []*Node) *Iterator {
+	return &Iterator{
+		nodes: nodes,
+		index: -1,
+	}
+}
+
+func (it *Iterator) Next() bool {
+	it.index++
+	return (it.index < len(it.nodes))
+}
+
+func (it *Iterator) Node() *Node {
+	return it.nodes[it.index]
 }

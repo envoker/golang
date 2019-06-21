@@ -15,57 +15,42 @@ func ConvertToString(n *Node) (string, error) {
 	return buf.String(), nil
 }
 
-func nodeToString(n *Node, buf *bytes.Buffer, indent int) (err error) {
+func nodeToString(n *Node, buf *bytes.Buffer, indent int) error {
 
 	indentBuff := make([]byte, indent)
 	for i := 0; i < indent; i++ {
 		indentBuff[i] = '\t'
 	}
 
-	if _, err = buf.Write(indentBuff); err != nil {
-		return
+	_, err := buf.Write(indentBuff)
+	if err != nil {
+		return err
 	}
 
-	var className string
-
-	switch n.t.class {
-	case CLASS_UNIVERSAL:
-		className = "UNIVERSAL"
-	case CLASS_APPLICATION:
-		className = "APPLICATION"
-	case CLASS_CONTEXT_SPECIFIC:
-		className = "CS"
-	case CLASS_PRIVATE:
-		className = "PRIVATE"
-	}
-
-	s := fmt.Sprintf("%s(%d):", className, int(n.t.tag))
+	className := classShortName(n.class)
+	s := fmt.Sprintf("%s(%d):", className, int(n.tag))
 	if _, err = buf.WriteString(s); err != nil {
-		return
+		return err
 	}
 
-	if n.t.valueType == VT_PRIMITIVE {
+	if n.IsPrimitive() {
 
-		var pPrimitive *Primitive = n.v.(*Primitive)
+		buf.WriteByte(' ')
 
-		buf.WriteByte('\t')
-
-		s = hex.EncodeToString(pPrimitive.Bytes())
+		s = hex.EncodeToString(n.data)
 		if _, err = buf.WriteString(s); err != nil {
-			return
+			return err
 		}
 
 		buf.WriteByte('\n')
 
-	} else if n.t.valueType == VT_CONSTRUCTED {
+	} else {
 
-		buf.WriteString("\t{\n")
+		buf.WriteString(" {\n")
 
-		var pConstructed *Constructed = n.v.(*Constructed)
-
-		for _, child := range pConstructed.nodes {
+		for _, child := range n.nodes {
 			if err = nodeToString(child, buf, indent+1); err != nil {
-				return
+				return err
 			}
 		}
 
@@ -73,5 +58,5 @@ func nodeToString(n *Node, buf *bytes.Buffer, indent int) (err error) {
 		buf.WriteString("}\n")
 	}
 
-	return
+	return nil
 }

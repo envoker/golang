@@ -51,7 +51,7 @@ func readFull(r io.Reader, data []byte) (n int, err error) {
 // rem = x % y
 func quoRem(x, y int) (quo, rem int) {
 	quo = x / y
-	rem = x - quo*y
+	rem = x % y
 	return
 }
 
@@ -112,4 +112,10 @@ func decodeTwoDigits(bs []byte) (int, error) {
 		value = value*base + digit
 	}
 	return value, nil
+}
+
+func cloneBytes(a []byte) []byte {
+	b := make([]byte, len(a))
+	copy(b, a)
+	return b
 }

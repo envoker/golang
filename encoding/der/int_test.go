@@ -698,7 +698,7 @@ func randInt64(r *rand.Rand) int64 {
 func TestInt64Marshal(t *testing.T) {
 
 	var a, b int64
-	r := newRand()
+	r := newRandNow()
 
 	for i := 0; i < 10000; i++ {
 

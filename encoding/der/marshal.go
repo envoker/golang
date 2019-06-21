@@ -1,7 +1,7 @@
 package der
 
 import (
-	"bytes"
+	"fmt"
 	"reflect"
 )
 
@@ -31,19 +31,17 @@ func Marshal(v interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	var buf bytes.Buffer
-	if _, err = n.Encode(&buf); err != nil {
-		return nil, err
-	}
-	return buf.Bytes(), nil
+	return EncodeNode(nil, n)
 }
 
 func Unmarshal(data []byte, v interface{}) error {
-	r := bytes.NewReader(data)
 	n := new(Node)
-	_, err := n.Decode(r)
+	rest, err := DecodeNode(data, n)
 	if err != nil {
 		return err
+	}
+	if len(rest) > 0 {
+		return fmt.Errorf("extra data length %d", len(rest))
 	}
 	return Deserialize(v, n)
 }
