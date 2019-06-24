@@ -2,6 +2,8 @@ package der
 
 import (
 	"testing"
+
+	"github.com/envoker/golang/encoding/der/random"
 )
 
 func TestTimeEncodeDecode(t *testing.T) {
@@ -12,7 +14,7 @@ func TestTimeEncodeDecode(t *testing.T) {
 		err        error
 	)
 
-	r := newRandNow()
+	r := random.NewRandNow()
 
 	const n = 100
 	for i := 0; i < n; i++ {

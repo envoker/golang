@@ -7,6 +7,11 @@ import (
 	"github.com/envoker/golang/encoding/der/coda"
 )
 
+var (
+	ErrNodeIsConstructed    = errors.New("node is constructed")
+	ErrNodeIsNotConstructed = errors.New("node is not constructed")
+)
+
 /*
 
 golang asn1:
@@ -21,9 +26,9 @@ type RawValue struct {
 */
 
 type Node struct {
-	class      int
-	tag        int
-	isCompound bool
+	class       int
+	tag         int
+	constructed bool // isCompound
 
 	data  []byte  // Primitive:   (isCompound = false)
 	nodes []*Node // Constructed: (isCompound = true)
@@ -54,28 +59,28 @@ func (n *Node) getHeader() coda.Header {
 	return coda.Header{
 		Class:      n.class,
 		Tag:        n.tag,
-		IsCompound: n.isCompound,
+		IsCompound: n.constructed,
 	}
 }
 
 func (n *Node) IsPrimitive() bool {
-	return !(n.isCompound)
+	return !(n.constructed)
 }
 
 func (n *Node) IsConstructed() bool {
-	return (n.isCompound)
+	return (n.constructed)
 }
 
-func (n *Node) SetHeader(h coda.Header) error {
+func (n *Node) setHeader(h coda.Header) error {
 	*n = Node{
-		class:      h.Class,
-		tag:        h.Tag,
-		isCompound: h.IsCompound,
+		class:       h.Class,
+		tag:         h.Tag,
+		constructed: h.IsCompound,
 	}
 	return nil
 }
 
-func (n *Node) CheckHeader(h coda.Header) error {
+func (n *Node) checkHeader(h coda.Header) error {
 	k := n.getHeader()
 	if !coda.EqualHeaders(k, h) {
 		return errors.New("der: invalid header")
@@ -113,7 +118,7 @@ func DecodeNode(data []byte, n *Node) (rest []byte, err error) {
 	if err != nil {
 		return nil, err
 	}
-	err = n.SetHeader(header)
+	err = n.setHeader(header)
 	if err != nil {
 		return nil, err
 	}
@@ -160,7 +165,12 @@ func decodeValue(data []byte, n *Node) error {
 	return nil
 }
 
-var ErrNodeIsNotConstructed = errors.New("node is not constructed")
+func (n *Node) Element(i int) *Node {
+	if n.IsPrimitive() {
+		return nil
+	}
+	return n.nodes[i]
+}
 
 func (n *Node) FirstChild() (*Node, error) {
 	if n.IsPrimitive() {
@@ -183,26 +193,25 @@ func (n *Node) AppendChild(child *Node) error {
 	return nil
 }
 
-func (n *Node) ChildCount() (int, error) {
+func (n *Node) ChildCount() int {
 	if n.IsPrimitive() {
-		return 0, ErrNodeIsNotConstructed
+		return 0
 	}
-	return len(n.nodes), nil
+	return len(n.nodes)
 }
 
-func (n *Node) RangeChildren(f func(child *Node) bool) {
-	for _, child := range n.nodes {
-		if !f(child) {
+func (n *Node) RangeChildren(f func(i int, child *Node) bool) {
+	for i, child := range n.nodes {
+		if !f(i, child) {
 			return
 		}
 	}
 }
 
 //----------------------------------------------------------------------------
-var ErrNodeIsConstructed = errors.New("node is constructed")
 
 func (n *Node) SetBool(b bool) error {
-	if n.isCompound {
+	if n.IsConstructed() {
 		return ErrNodeIsConstructed
 	}
 	n.data = boolEncode(b)
@@ -210,14 +219,14 @@ func (n *Node) SetBool(b bool) error {
 }
 
 func (n *Node) GetBool() (bool, error) {
-	if n.isCompound {
+	if n.IsConstructed() {
 		return false, ErrNodeIsConstructed
 	}
 	return boolDecode(n.data)
 }
 
 func (n *Node) SetInt(i int64) error {
-	if n.isCompound {
+	if n.IsConstructed() {
 		return ErrNodeIsConstructed
 	}
 	n.data = intEncode(i)
@@ -225,14 +234,14 @@ func (n *Node) SetInt(i int64) error {
 }
 
 func (n *Node) GetInt() (int64, error) {
-	if n.isCompound {
+	if n.IsConstructed() {
 		return 0, ErrNodeIsConstructed
 	}
 	return intDecode(n.data)
 }
 
 func (n *Node) SetBytes(bs []byte) error {
-	if n.isCompound {
+	if n.IsConstructed() {
 		return ErrNodeIsConstructed
 	}
 	n.data = bs
@@ -240,7 +249,7 @@ func (n *Node) SetBytes(bs []byte) error {
 }
 
 func (n *Node) GetBytes() ([]byte, error) {
-	if n.isCompound {
+	if n.IsConstructed() {
 		return nil, ErrNodeIsConstructed
 	}
 	return n.data, nil
@@ -249,34 +258,6 @@ func (n *Node) GetBytes() ([]byte, error) {
 //----------------------------------------------------------------------------
 func (n *Node) Iterator() *Iterator {
 	return newIterator(n.nodes)
-}
-
-func NewSequence() (*Node, error) {
-
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_SEQUENCE,
-		IsCompound: true,
-	}
-
-	n := new(Node)
-	err := n.SetHeader(h)
-	if err != nil {
-		return nil, err
-	}
-
-	return n, nil
-}
-
-func IsSequence(n *Node) error {
-
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_SEQUENCE,
-		IsCompound: true,
-	}
-
-	return n.CheckHeader(h)
 }
 
 type Iterator struct {

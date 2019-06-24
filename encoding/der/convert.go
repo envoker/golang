@@ -28,7 +28,7 @@ func nodeToString(n *Node, buf *bytes.Buffer, indent int) error {
 	}
 
 	className := classShortName(n.class)
-	s := fmt.Sprintf("%s(%d):", className, int(n.tag))
+	s := fmt.Sprintf("%s(%d):", className, n.GetTag())
 	if _, err = buf.WriteString(s); err != nil {
 		return err
 	}

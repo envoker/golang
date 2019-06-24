@@ -69,7 +69,7 @@ func getDeserializeFunc(t reflect.Type) deserializeFunc {
 
 func funcDeserialize(v reflect.Value, n *Node) error {
 	d := v.Interface().(Deserializer)
-	return d.DeserializeDER(n)
+	return d.DeserializeDER(n, -1)
 }
 
 func float32Deserialize(v reflect.Value, n *Node) error {
@@ -90,7 +90,7 @@ func stringDeserialize(v reflect.Value, n *Node) error {
 		IsCompound: false,
 	}
 
-	err := n.CheckHeader(h)
+	err := n.checkHeader(h)
 	if err != nil {
 		return err
 	}
@@ -112,7 +112,7 @@ func bytesDeserialize(v reflect.Value, n *Node) error {
 		IsCompound: false,
 	}
 
-	err := n.CheckHeader(h)
+	err := n.checkHeader(h)
 	if err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func structDeserialize(v reflect.Value, n *Node) error {
 		return err
 	}
 
-	err = IsSequence(n)
+	err = CheckConstructed(n, -1)
 	if err != nil {
 		return err
 	}
@@ -158,7 +158,7 @@ func structFieldDeserialize(nodes []*Node, v reflect.Value, finfo *fieldInfo) er
 			return errors.New("Deserializer is nil")
 		}
 
-		err := ConstructedCheckNode(tag, cs)
+		err := CheckConstructed(cs, tag)
 		if err != nil {
 			return err
 		}
@@ -200,7 +200,7 @@ func ptrValueDeserialize(v reflect.Value, n *Node, fn deserializeFunc) error {
 		IsCompound: false,
 	}
 
-	err := n.CheckHeader(h)
+	err := n.checkHeader(h)
 	if err == nil {
 		valueSetZero(v)
 		return nil

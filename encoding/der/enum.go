@@ -1,39 +1,37 @@
 package der
 
-import (
-	"github.com/envoker/golang/encoding/der/coda"
-)
+// Enumerated
+func EnumSerialize(e int, tag int) (n *Node, err error) {
 
-func EnumSerialize(e int) (*Node, error) {
-
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_ENUMERATED,
-		IsCompound: false,
+	if tag < 0 {
+		n = NewNode(CLASS_UNIVERSAL, TAG_ENUMERATED)
+	} else {
+		n = NewNode(CLASS_CONTEXT_SPECIFIC, tag)
 	}
 
-	n := new(Node)
-	n.SetHeader(h)
-
-	n.data = intEncode(int64(e))
+	err = n.SetInt(int64(e))
+	if err != nil {
+		return nil, err
+	}
 
 	return n, nil
 }
 
-func EnumDeserialize(n *Node) (int, error) {
+func EnumDeserialize(n *Node, tag int) (int, error) {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_ENUMERATED,
-		IsCompound: false,
+	if tag < 0 {
+		err := CheckNode(n, CLASS_UNIVERSAL, TAG_ENUMERATED)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		err := CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
+		if err != nil {
+			return 0, err
+		}
 	}
 
-	err := n.CheckHeader(h)
-	if err != nil {
-		return 0, err
-	}
-
-	i, err := intDecode(n.data)
+	i, err := n.GetInt()
 	if err != nil {
 		return 0, err
 	}

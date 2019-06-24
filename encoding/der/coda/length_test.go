@@ -6,6 +6,8 @@ import (
 	"io"
 	"math/rand"
 	"testing"
+
+	"github.com/envoker/golang/encoding/der/random"
 )
 
 func randLength(r *rand.Rand) int {
@@ -56,7 +58,7 @@ func TestLengthSamples(t *testing.T) {
 }
 
 func TestLengthRand(t *testing.T) {
-	r := newRandNow()
+	r := random.NewRandNow()
 	for i := 0; i < 1000; i++ {
 		a := randLength(r)
 		data, err := EncodeLength(nil, a)
@@ -76,7 +78,7 @@ func TestLengthRand(t *testing.T) {
 
 func TestLengthMergeSplit(t *testing.T) {
 
-	r := newRandNow()
+	r := random.NewRandNow()
 
 	as := make([]int, 100)
 

@@ -5,20 +5,30 @@ import (
 	"reflect"
 )
 
+/*
+type Tag int
+
 type Serializer interface {
-	SerializeDER() (*Node, error)
+	SerializeDER(params ...interface{}) (*Node, error)
 }
 
 type Deserializer interface {
-	DeserializeDER(n *Node) error
+	DeserializeDER(n *Node, params ...interface{}) error
 }
 
-type ContextSerializer interface {
-	ContextSerializeDER(tag int) (*Node, error)
+ussage:
+	SerializeDER()
+	SerializeDER(der.Tag(0))
+	SerializeDER(der.Tag(1))
+
+*/
+
+type Serializer interface {
+	SerializeDER(tag int) (*Node, error)
 }
 
-type ContextDeserializer interface {
-	ContextDeserializeDER(tag int, n *Node) error
+type Deserializer interface {
+	DeserializeDER(n *Node, tag int) error
 }
 
 var (

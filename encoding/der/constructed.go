@@ -1,58 +1,71 @@
 package der
 
 import (
+	"errors"
 	"io"
-
-	"github.com/envoker/golang/encoding/der/coda"
 )
 
 func nodeByTag(ns []*Node, tag int) *Node {
 	for _, n := range ns {
-		if n.tag == tag {
+		if n.GetTag() == tag {
 			return n
 		}
 	}
 	return nil
 }
 
-func ConstructedNewNode(tag int) *Node {
+func NewConstructed(tag int) (n *Node) {
+
+	if tag < 0 {
+		return &Node{
+			class:       CLASS_UNIVERSAL,
+			tag:         TAG_SEQUENCE,
+			constructed: true,
+		}
+	}
+
 	return &Node{
 		class:       CLASS_CONTEXT_SPECIFIC,
 		tag:         tag,
-		isCompound: true,
+		constructed: true,
 	}
 }
 
-func ConstructedCheckNode(tag int, n *Node) error {
+func CheckConstructed(n *Node, tag int) error {
 
-	h := coda.Header{
-		Class:      CLASS_CONTEXT_SPECIFIC,
-		Tag:        tag,
-		IsCompound: true,
+	if n.IsPrimitive() {
+		return errors.New("node is primitive")
 	}
 
-	return n.CheckHeader(h)
+	if tag < 0 {
+		return CheckNode(n, CLASS_UNIVERSAL, TAG_SEQUENCE)
+	}
+
+	return CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
 }
 
-func ChildSerialize(n *Node, s ContextSerializer, tag int) error {
-
-	child, err := s.ContextSerializeDER(tag)
+func ChildSerialize(n *Node, s Serializer, tag int) error {
+	child, err := s.SerializeDER(tag)
 	if err != nil {
 		return err
 	}
-
-	n.nodes = append(n.nodes, child)
-
+	if child != nil {
+		n.nodes = append(n.nodes, child)
+	}
 	return nil
 }
 
-func ChildDeserialize(n *Node, d ContextDeserializer, tag int) error {
+func ChildDeserialize(n *Node, d Deserializer, tag int) error {
 	child := nodeByTag(n.nodes, tag)
-	return d.ContextDeserializeDER(tag, child)
+	// child can be nil for an optional value
+	return d.DeserializeDER(child, tag)
 }
 
 func encodeNodes(ns []*Node) (data []byte, err error) {
 	for _, n := range ns {
+		if n == nil {
+			continue
+		}
 		data, err = EncodeNode(data, n)
 		if err != nil {
 			return nil, err

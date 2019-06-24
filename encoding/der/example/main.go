@@ -6,8 +6,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"math/rand"
-	"time"
 
 	"github.com/envoker/golang/encoding/der"
 )
@@ -91,10 +89,6 @@ func onlyHex(s string) string {
 	}
 
 	return string(res)
-}
-
-func newRand() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
 }
 
 type uint64Sample struct {

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"math/rand"
 	"time"
+
+	"github.com/envoker/golang/encoding/der/random"
 )
 
 /*
@@ -193,10 +195,10 @@ func (p *UtcTime) InitRandomInstance(r *rand.Rand) error {
 	p.sec = r.Intn(60)  // [ 0 .. 59 ]
 
 	// Zone
-	if randBool(r) {
+	if random.Bool(r) {
 		p.zone = 0
 	} else {
-		p.zone = randIntRange(r, timeZoneMin, timeZoneMax+1)
+		p.zone = random.RangeInt(r, timeZoneMin, timeZoneMax+1)
 	}
 
 	return nil

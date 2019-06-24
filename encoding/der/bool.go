@@ -30,7 +30,7 @@ func boolSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	n := new(Node)
-	n.SetHeader(h)
+	n.setHeader(h)
 
 	n.data = boolEncode(v.Bool())
 
@@ -45,7 +45,7 @@ func boolDeserialize(v reflect.Value, n *Node) error {
 		IsCompound: false,
 	}
 
-	err := n.CheckHeader(h)
+	err := n.checkHeader(h)
 	if err != nil {
 		return err
 	}
@@ -58,4 +58,42 @@ func boolDeserialize(v reflect.Value, n *Node) error {
 	v.SetBool(b)
 
 	return nil
+}
+
+func BoolSerialize(b bool, tag int) (n *Node, err error) {
+
+	if tag < 0 {
+		n = NewNode(CLASS_UNIVERSAL, TAG_BOOLEAN)
+	} else {
+		n = NewNode(CLASS_CONTEXT_SPECIFIC, tag)
+	}
+
+	err = n.SetBool(b)
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
+}
+
+func BoolDeserialize(n *Node, tag int) (bool, error) {
+
+	if tag < 0 {
+		err := CheckNode(n, CLASS_UNIVERSAL, TAG_BOOLEAN)
+		if err != nil {
+			return false, err
+		}
+	} else {
+		err := CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
+		if err != nil {
+			return false, err
+		}
+	}
+
+	b, err := n.GetBool()
+	if err != nil {
+		return false, err
+	}
+
+	return b, nil
 }

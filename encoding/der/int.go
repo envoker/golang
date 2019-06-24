@@ -105,7 +105,7 @@ func uintSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	n := new(Node)
-	err := n.SetHeader(h)
+	err := n.setHeader(h)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +124,7 @@ func intSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	n := new(Node)
-	err := n.SetHeader(h)
+	err := n.setHeader(h)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +142,7 @@ func uintDeserialize(v reflect.Value, n *Node) error {
 		IsCompound: false,
 	}
 
-	err := n.CheckHeader(h)
+	err := n.checkHeader(h)
 	if err != nil {
 		return err
 	}
@@ -184,7 +184,7 @@ func intDeserialize(v reflect.Value, n *Node) error {
 		IsCompound: false,
 	}
 
-	err := n.CheckHeader(h)
+	err := n.checkHeader(h)
 	if err != nil {
 		return err
 	}
@@ -216,4 +216,37 @@ func intDeserialize(v reflect.Value, n *Node) error {
 	v.SetInt(x)
 
 	return nil
+}
+
+func IntSerialize(tag int, x int64) (n *Node, err error) {
+
+	if tag < 0 {
+		n = NewNode(CLASS_UNIVERSAL, TAG_INTEGER)
+	} else {
+		n = NewNode(CLASS_CONTEXT_SPECIFIC, tag)
+	}
+
+	err = n.SetInt(x)
+	if err != nil {
+		return nil, err
+	}
+
+	return n, nil
+}
+
+func IntDeserialize(n *Node, tag int) (int64, error) {
+
+	if tag < 0 {
+		err := CheckNode(n, CLASS_UNIVERSAL, TAG_INTEGER)
+		if err != nil {
+			return 0, err
+		}
+	} else {
+		err := CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
+		if err != nil {
+			return 0, err
+		}
+	}
+
+	return n.GetInt()
 }

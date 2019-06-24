@@ -67,7 +67,7 @@ func funcSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	s := v.Interface().(Serializer)
-	return s.SerializeDER()
+	return s.SerializeDER(-1)
 }
 
 func nullSerialize(v reflect.Value) (*Node, error) {
@@ -79,7 +79,7 @@ func nullSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	n := new(Node)
-	n.SetHeader(h)
+	n.setHeader(h)
 
 	return n, nil
 }
@@ -103,7 +103,7 @@ func stringSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	n := new(Node)
-	n.SetHeader(h)
+	n.setHeader(h)
 
 	n.data = []byte(v.String())
 
@@ -119,7 +119,7 @@ func bytesSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	n := new(Node)
-	n.SetHeader(h)
+	n.setHeader(h)
 
 	n.data = cloneBytes(v.Bytes())
 
@@ -133,18 +133,13 @@ func structSerialize(v reflect.Value) (*Node, error) {
 		return nil, err
 	}
 
-	n, err := NewSequence()
-	if err != nil {
-		return nil, err
-	}
-
+	n := NewConstructed(-1)
 	for i := 0; i < v.NumField(); i++ {
 		err := structFieldSerialize(n, v.Field(i), &(tinfo.fields[i]))
 		if err != nil {
 			return nil, err
 		}
 	}
-
 	return n, nil
 }
 
@@ -164,7 +159,7 @@ func structFieldSerialize(n *Node, v reflect.Value, finfo *fieldInfo) error {
 
 	tag := *(finfo.tag)
 
-	cs := ConstructedNewNode(tag)
+	cs := NewConstructed(tag)
 
 	fn := getSerializeFunc(v.Type())
 	child, err := fn(v)
@@ -206,16 +201,10 @@ func newArraySerialize(t reflect.Type) serializeFunc {
 }
 
 func (p *arraySerializer) encode(v reflect.Value) (*Node, error) {
-
 	if (v.Kind() == reflect.Ptr) && v.IsNil() {
 		return nullSerialize(v)
 	}
-
-	n, err := NewSequence()
-	if err != nil {
-		return nil, err
-	}
-
+	n := NewConstructed(-1)
 	k := v.Len()
 	for i := 0; i < k; i++ {
 
@@ -226,7 +215,6 @@ func (p *arraySerializer) encode(v reflect.Value) (*Node, error) {
 
 		n.nodes = append(n.nodes, child)
 	}
-
 	return n, nil
 }
 

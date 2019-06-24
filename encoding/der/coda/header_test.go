@@ -6,7 +6,8 @@ import (
 	"io"
 	"math/rand"
 	"testing"
-	"time"
+
+	"github.com/envoker/golang/encoding/der/random"
 )
 
 func TestTagSamples(t *testing.T) {
@@ -103,7 +104,7 @@ func testSamplesDecode(t *testing.T, samples []sample) {
 }
 
 func TestTagRand(t *testing.T) {
-	r := newRandNow()
+	r := random.NewRandNow()
 	for i := 0; i < 10000; i++ {
 		var a Header
 		randHeader(r, &a)
@@ -123,10 +124,6 @@ func TestTagRand(t *testing.T) {
 	}
 }
 
-func newRandNow() *rand.Rand {
-	return rand.New(rand.NewSource(time.Now().UnixNano()))
-}
-
 func randHeader(r *rand.Rand, h *Header) {
 	switch r.Intn(4) {
 	case 0:
@@ -144,7 +141,7 @@ func randHeader(r *rand.Rand, h *Header) {
 
 func TestHeaderMergeSplit(t *testing.T) {
 
-	r := newRandNow()
+	r := random.NewRandNow()
 
 	as := make([]Header, 100)
 
