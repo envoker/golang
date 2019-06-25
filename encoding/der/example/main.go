@@ -208,7 +208,7 @@ func testIntJSON() error {
 		return err
 	}
 
-	var b uint8
+	var b int
 
 	err = json.Unmarshal(data, &b)
 	if err != nil {
@@ -221,9 +221,9 @@ func testIntJSON() error {
 }
 
 type Persone struct {
-	Name string `der:"tag:0" asn1:"tag:0"`
-	Age  int    `der:"tag:1" asn1:"tag:1"`
-	Desc string `der:"tag:2,optional" asn1:"tag:2"`
+	Name string `asn1:"tag:0" der:"tag:0"`
+	Age  int    `asn1:"tag:1" der:"tag:1"`
+	Desc string `asn1:"tag:2" der:"tag:2,optional"`
 }
 
 func newString(s string) *string {

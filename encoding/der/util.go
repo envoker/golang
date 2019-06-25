@@ -1,8 +1,6 @@
 package der
 
 import (
-	"bytes"
-	"fmt"
 	"io"
 )
 
@@ -75,44 +73,44 @@ func digitToByte(digit int) (b byte, ok bool) {
 	return 0, false
 }
 
-func encodeTwoDigits(buf *bytes.Buffer, val int) error {
-	const (
-		n    = 2
-		base = 10
-	)
-	var bs [2]byte
-	var digit int
-	for i := n; i > 0; i-- {
-		val, digit = quoRem(val, base)
-		b, ok := digitToByte(digit)
-		if !ok {
-			return fmt.Errorf("invalid convert digit %d to byte", digit)
-		}
-		bs[i-1] = b
-	}
-	_, err := buf.Write(bs[:])
-	return err
-}
+// func encodeTwoDigits(buf *bytes.Buffer, val int) error {
+// 	const (
+// 		n    = 2
+// 		base = 10
+// 	)
+// 	var bs [2]byte
+// 	var digit int
+// 	for i := n; i > 0; i-- {
+// 		val, digit = quoRem(val, base)
+// 		b, ok := digitToByte(digit)
+// 		if !ok {
+// 			return fmt.Errorf("invalid convert digit %d to byte", digit)
+// 		}
+// 		bs[i-1] = b
+// 	}
+// 	_, err := buf.Write(bs[:])
+// 	return err
+// }
 
-func decodeTwoDigits(bs []byte) (int, error) {
-	const (
-		n    = 2
-		base = 10
-	)
-	if len(bs) < 2 {
-		return 0, fmt.Errorf("decodeTwoDigits: insufficient data length, have:%d, want:%d", len(bs), 2)
-	}
-	var value int
-	for i := 0; i < n; i++ {
-		b := bs[i]
-		digit, ok := byteToDigit(b)
-		if !ok {
-			return 0, fmt.Errorf("decodeTwoDigits: invalid convert byte %x to digit", b)
-		}
-		value = value*base + digit
-	}
-	return value, nil
-}
+// func decodeTwoDigits(bs []byte) (int, error) {
+// 	const (
+// 		n    = 2
+// 		base = 10
+// 	)
+// 	if len(bs) < 2 {
+// 		return 0, fmt.Errorf("decodeTwoDigits: insufficient data length, have:%d, want:%d", len(bs), 2)
+// 	}
+// 	var value int
+// 	for i := 0; i < n; i++ {
+// 		b := bs[i]
+// 		digit, ok := byteToDigit(b)
+// 		if !ok {
+// 			return 0, fmt.Errorf("decodeTwoDigits: invalid convert byte %x to digit", b)
+// 		}
+// 		value = value*base + digit
+// 	}
+// 	return value, nil
+// }
 
 func cloneBytes(a []byte) []byte {
 	b := make([]byte, len(a))

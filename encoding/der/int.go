@@ -218,34 +218,31 @@ func intDeserialize(v reflect.Value, n *Node) error {
 	return nil
 }
 
-func IntSerialize(tag int, x int64) (n *Node, err error) {
+func IntSerialize(tag int, x int64) (*Node, error) {
 
+	class := CLASS_CONTEXT_SPECIFIC
 	if tag < 0 {
-		n = NewNode(CLASS_UNIVERSAL, TAG_INTEGER)
-	} else {
-		n = NewNode(CLASS_CONTEXT_SPECIFIC, tag)
+		class = CLASS_UNIVERSAL
+		tag = TAG_INTEGER
 	}
 
-	err = n.SetInt(x)
-	if err != nil {
-		return nil, err
-	}
+	n := NewNode(class, tag)
+	n.SetInt(x)
 
 	return n, nil
 }
 
 func IntDeserialize(n *Node, tag int) (int64, error) {
 
+	class := CLASS_CONTEXT_SPECIFIC
 	if tag < 0 {
-		err := CheckNode(n, CLASS_UNIVERSAL, TAG_INTEGER)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		err := CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
-		if err != nil {
-			return 0, err
-		}
+		class = CLASS_UNIVERSAL
+		tag = TAG_INTEGER
+	}
+
+	err := CheckNode(n, class, tag)
+	if err != nil {
+		return 0, err
 	}
 
 	return n.GetInt()

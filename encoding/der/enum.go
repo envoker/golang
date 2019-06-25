@@ -1,34 +1,31 @@
 package der
 
 // Enumerated
-func EnumSerialize(e int, tag int) (n *Node, err error) {
+func EnumSerialize(e int, tag int) (*Node, error) {
 
+	class := CLASS_CONTEXT_SPECIFIC
 	if tag < 0 {
-		n = NewNode(CLASS_UNIVERSAL, TAG_ENUMERATED)
-	} else {
-		n = NewNode(CLASS_CONTEXT_SPECIFIC, tag)
+		class = CLASS_UNIVERSAL
+		tag = TAG_ENUMERATED
 	}
 
-	err = n.SetInt(int64(e))
-	if err != nil {
-		return nil, err
-	}
+	n := NewNode(class, tag)
+	n.SetInt(int64(e))
 
 	return n, nil
 }
 
 func EnumDeserialize(n *Node, tag int) (int, error) {
 
+	class := CLASS_CONTEXT_SPECIFIC
 	if tag < 0 {
-		err := CheckNode(n, CLASS_UNIVERSAL, TAG_ENUMERATED)
-		if err != nil {
-			return 0, err
-		}
-	} else {
-		err := CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
-		if err != nil {
-			return 0, err
-		}
+		class = CLASS_UNIVERSAL
+		tag = TAG_ENUMERATED
+	}
+
+	err := CheckNode(n, class, tag)
+	if err != nil {
+		return 0, err
 	}
 
 	i, err := n.GetInt()

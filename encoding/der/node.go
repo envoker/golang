@@ -3,6 +3,8 @@ package der
 import (
 	"errors"
 	"fmt"
+	"time"
+	"unicode/utf8"
 
 	"github.com/envoker/golang/encoding/der/coda"
 )
@@ -143,7 +145,7 @@ func DecodeNode(data []byte, n *Node) (rest []byte, err error) {
 }
 
 func encodeValue(n *Node) ([]byte, error) {
-	if n.IsPrimitive() {
+	if !n.constructed {
 		return cloneBytes(n.data), nil
 	}
 	return encodeNodes(n.nodes)
@@ -151,7 +153,7 @@ func encodeValue(n *Node) ([]byte, error) {
 
 func decodeValue(data []byte, n *Node) error {
 
-	if n.IsPrimitive() {
+	if !n.constructed {
 		n.data = cloneBytes(data)
 		return nil
 	}
@@ -165,118 +167,97 @@ func decodeValue(data []byte, n *Node) error {
 	return nil
 }
 
-func (n *Node) Element(i int) *Node {
-	if n.IsPrimitive() {
-		return nil
-	}
-	return n.nodes[i]
-}
-
-func (n *Node) FirstChild() (*Node, error) {
-	if n.IsPrimitive() {
-		return nil, ErrNodeIsNotConstructed
-	}
-	if len(n.nodes) == 0 {
-		return nil, errors.New("Node nas not children")
-	}
-	return n.nodes[0], nil
-}
-
-func (n *Node) AppendChild(child *Node) error {
-	if n.IsPrimitive() {
-		return ErrNodeIsNotConstructed
-	}
-	if child == nil {
-		return nil
-	}
-	n.nodes = append(n.nodes, child)
-	return nil
-}
-
-func (n *Node) ChildCount() int {
-	if n.IsPrimitive() {
-		return 0
-	}
-	return len(n.nodes)
-}
-
-func (n *Node) RangeChildren(f func(i int, child *Node) bool) {
-	for i, child := range n.nodes {
-		if !f(i, child) {
-			return
-		}
-	}
-}
-
 //----------------------------------------------------------------------------
 
-func (n *Node) SetBool(b bool) error {
-	if n.IsConstructed() {
-		return ErrNodeIsConstructed
+func (n *Node) SetNodes(ns []*Node) {
+	n.constructed = true
+	n.nodes = ns
+}
+
+func (n *Node) GetNodes() ([]*Node, error) {
+	if !n.constructed {
+		return nil, ErrNodeIsNotConstructed
 	}
+	return n.nodes, nil
+}
+
+func (n *Node) SetBool(b bool) {
+	n.constructed = false
 	n.data = boolEncode(b)
-	return nil
 }
 
 func (n *Node) GetBool() (bool, error) {
-	if n.IsConstructed() {
+	if n.constructed {
 		return false, ErrNodeIsConstructed
 	}
 	return boolDecode(n.data)
 }
 
-func (n *Node) SetInt(i int64) error {
-	if n.IsConstructed() {
-		return ErrNodeIsConstructed
-	}
+func (n *Node) SetInt(i int64) {
+	n.constructed = false
 	n.data = intEncode(i)
-	return nil
 }
 
 func (n *Node) GetInt() (int64, error) {
-	if n.IsConstructed() {
+	if n.constructed {
 		return 0, ErrNodeIsConstructed
 	}
 	return intDecode(n.data)
 }
 
-func (n *Node) SetBytes(bs []byte) error {
-	if n.IsConstructed() {
-		return ErrNodeIsConstructed
+func (n *Node) SetUint(u uint64) {
+	n.constructed = false
+	n.data = uintEncode(u)
+}
+
+func (n *Node) GetUint() (uint64, error) {
+	if n.constructed {
+		return 0, ErrNodeIsConstructed
 	}
+	return uintDecode(n.data)
+}
+
+func (n *Node) SetBytes(bs []byte) {
+	n.constructed = false
 	n.data = bs
-	return nil
 }
 
 func (n *Node) GetBytes() ([]byte, error) {
-	if n.IsConstructed() {
+	if n.constructed {
 		return nil, ErrNodeIsConstructed
 	}
 	return n.data, nil
 }
 
-//----------------------------------------------------------------------------
-func (n *Node) Iterator() *Iterator {
-	return newIterator(n.nodes)
+func (n *Node) SetString(s string) {
+	n.constructed = false
+	n.data = []byte(s)
 }
 
-type Iterator struct {
-	nodes []*Node
-	index int
-}
-
-func newIterator(nodes []*Node) *Iterator {
-	return &Iterator{
-		nodes: nodes,
-		index: -1,
+func (n *Node) GetString() (string, error) {
+	if n.constructed {
+		return "", ErrNodeIsConstructed
 	}
+	if !utf8.Valid(n.data) {
+		return "", errors.New("invalid utf8 string")
+		//return "", errors.New("data is not utf-8 string")
+	}
+	return string(n.data), nil
 }
 
-func (it *Iterator) Next() bool {
-	it.index++
-	return (it.index < len(it.nodes))
+func (n *Node) SetUTCTime(t time.Time) error {
+	data, err := encodeUTCTime(t)
+	if err != nil {
+		return err
+	}
+	n.constructed = false
+	n.data = data
+	return nil
 }
 
-func (it *Iterator) Node() *Node {
-	return it.nodes[it.index]
+func (n *Node) GetUTCTime() (time.Time, error) {
+	if n.constructed {
+		return time.Time{}, ErrNodeIsConstructed
+	}
+	return decodeUTCTime(n.data)
 }

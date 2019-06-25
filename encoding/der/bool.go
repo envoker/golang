@@ -2,8 +2,6 @@ package der
 
 import (
 	"reflect"
-
-	"github.com/envoker/golang/encoding/der/coda"
 )
 
 func boolEncode(x bool) []byte {
@@ -22,78 +20,44 @@ func boolDecode(data []byte) (bool, error) {
 }
 
 func boolSerialize(v reflect.Value) (*Node, error) {
-
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_BOOLEAN,
-		IsCompound: false,
-	}
-
-	n := new(Node)
-	n.setHeader(h)
-
-	n.data = boolEncode(v.Bool())
-
-	return n, nil
+	return BoolSerialize(v.Bool(), -1)
 }
 
 func boolDeserialize(v reflect.Value, n *Node) error {
-
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_BOOLEAN,
-		IsCompound: false,
-	}
-
-	err := n.checkHeader(h)
+	b, err := BoolDeserialize(n, -1)
 	if err != nil {
 		return err
 	}
-
-	b, err := boolDecode(n.data)
-	if err != nil {
-		return err
-	}
-
 	v.SetBool(b)
-
 	return nil
 }
 
-func BoolSerialize(b bool, tag int) (n *Node, err error) {
+func BoolSerialize(b bool, tag int) (*Node, error) {
 
+	class := CLASS_CONTEXT_SPECIFIC
 	if tag < 0 {
-		n = NewNode(CLASS_UNIVERSAL, TAG_BOOLEAN)
-	} else {
-		n = NewNode(CLASS_CONTEXT_SPECIFIC, tag)
+		class = CLASS_UNIVERSAL
+		tag = TAG_BOOLEAN
 	}
 
-	err = n.SetBool(b)
-	if err != nil {
-		return nil, err
-	}
+	n := NewNode(class, tag)
+	n.SetBool(b)
 
 	return n, nil
 }
 
 func BoolDeserialize(n *Node, tag int) (bool, error) {
 
+	class := CLASS_CONTEXT_SPECIFIC
 	if tag < 0 {
-		err := CheckNode(n, CLASS_UNIVERSAL, TAG_BOOLEAN)
-		if err != nil {
-			return false, err
-		}
-	} else {
-		err := CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
-		if err != nil {
-			return false, err
-		}
+		class = CLASS_UNIVERSAL
+		tag = TAG_BOOLEAN
 	}
 
-	b, err := n.GetBool()
+	err := CheckNode(n, class, tag)
 	if err != nil {
 		return false, err
 	}
 
-	return b, nil
+	return n.GetBool()
 }

@@ -1,7 +1,6 @@
 package der
 
 import (
-	"errors"
 	"io"
 )
 
@@ -33,8 +32,8 @@ func NewConstructed(tag int) (n *Node) {
 
 func CheckConstructed(n *Node, tag int) error {
 
-	if n.IsPrimitive() {
-		return errors.New("node is primitive")
+	if !n.constructed {
+		return ErrNodeIsNotConstructed
 	}
 
 	if tag < 0 {

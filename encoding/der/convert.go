@@ -33,7 +33,7 @@ func nodeToString(n *Node, buf *bytes.Buffer, indent int) error {
 		return err
 	}
 
-	if n.IsPrimitive() {
+	if !n.constructed {
 
 		buf.WriteByte(' ')
 
