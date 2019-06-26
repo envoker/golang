@@ -145,33 +145,32 @@ func structDeserialize(v reflect.Value, n *Node) error {
 
 func structFieldDeserialize(nodes []*Node, v reflect.Value, finfo *fieldInfo) error {
 
-	if finfo.tag != nil {
-
-		tag := *(finfo.tag)
-
-		cs := nodeByTag(nodes, tag)
-		if cs == nil {
-			if finfo.optional {
-				valueSetZero(v)
-				return nil
-			}
-			return errors.New("Deserializer is nil")
-		}
-
-		err := CheckConstructed(cs, tag)
-		if err != nil {
-			return err
-		}
-
-		child := cs.nodes[0]
-
-		valueMake(v)
-
-		fn := getDeserializeFunc(v.Type())
-		return fn(v, child)
+	if finfo.tag == nil {
+		return errors.New("tag is nil")
 	}
 
-	return errors.New("tag is nil")
+	tag := *(finfo.tag)
+
+	cs := NodeByTag(nodes, tag)
+	if cs == nil {
+		if finfo.optional {
+			valueSetZero(v)
+			return nil
+		}
+		return errors.New("Deserializer is nil")
+	}
+
+	err := CheckConstructed(cs, tag)
+	if err != nil {
+		return err
+	}
+
+	child := cs.nodes[0]
+
+	valueMake(v)
+
+	fn := getDeserializeFunc(v.Type())
+	return fn(v, child)
 }
 
 type ptrDeserializer struct {

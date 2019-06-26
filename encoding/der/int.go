@@ -247,3 +247,33 @@ func IntDeserialize(n *Node, tag int) (int64, error) {
 
 	return n.GetInt()
 }
+
+func UintSerialize(tag int, x uint64) (*Node, error) {
+
+	class := CLASS_CONTEXT_SPECIFIC
+	if tag < 0 {
+		class = CLASS_UNIVERSAL
+		tag = TAG_INTEGER
+	}
+
+	n := NewNode(class, tag)
+	n.SetUint(x)
+
+	return n, nil
+}
+
+func UintDeserialize(n *Node, tag int) (uint64, error) {
+
+	class := CLASS_CONTEXT_SPECIFIC
+	if tag < 0 {
+		class = CLASS_UNIVERSAL
+		tag = TAG_INTEGER
+	}
+
+	err := CheckNode(n, class, tag)
+	if err != nil {
+		return 0, err
+	}
+
+	return n.GetUint()
+}
