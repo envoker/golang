@@ -4,86 +4,141 @@ import (
 	"io"
 )
 
-func NodeByTag(ns []*Node, tag int) *Node {
-	for _, n := range ns {
-		if n.GetTag() == tag {
-			return n
-		}
-	}
-	return nil
+type Container interface {
+	AppendChild(*Node)
+	FirstChild() *Node
+	ChildCount() int
+	ChildByNumber(tn TagNumber) *Node
+	ChildByIndex(index int) *Node
 }
 
-func NewConstructed(tag int) (n *Node) {
+func ChildSerialize(container Container, s ContextSerializer, tn TagNumber) error {
 
-	if tag < 0 {
-		return &Node{
-			class:       CLASS_UNIVERSAL,
-			tag:         TAG_SEQUENCE,
-			constructed: true,
-		}
-	}
-
-	return &Node{
-		class:       CLASS_CONTEXT_SPECIFIC,
-		tag:         tag,
-		constructed: true,
-	}
-}
-
-func CheckConstructed(n *Node, tag int) error {
-
-	if !n.constructed {
-		return ErrNodeIsNotConstructed
-	}
-
-	if tag < 0 {
-		return CheckNode(n, CLASS_UNIVERSAL, TAG_SEQUENCE)
-	}
-
-	return CheckNode(n, CLASS_CONTEXT_SPECIFIC, tag)
-}
-
-func ChildSerialize_(n *Node, s Serializer, tag int) error {
-	child, err := s.SerializeDER(tag)
+	child, err := s.ContextSerializeDER(tn)
 	if err != nil {
 		return err
 	}
+
+	container.AppendChild(child)
+
+	return nil
+}
+
+func ChildDeserialize(container Container, d ContextDeserializer, tn TagNumber) error {
+	child := container.ChildByNumber(tn)
+	return d.ContextDeserializeDER(tn, child)
+}
+
+func ConstructedNewNode(tn TagNumber) (node *Node, err error) {
+
+	var tagType TagType
+	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_CONSTRUCTED, tn)
+
+	node = new(Node)
+	if err = node.SetType(tagType); err != nil {
+		return
+	}
+
+	return
+}
+
+func ConstructedCheckNode(tn TagNumber, node *Node) (err error) {
+
+	var tagType TagType
+	tagType.Init(CLASS_CONTEXT_SPECIFIC, VT_CONSTRUCTED, tn)
+
+	if err = node.CheckType(tagType); err != nil {
+		return
+	}
+
+	return
+}
+
+type Constructed struct {
+	nodes []*Node
+}
+
+func (p *Constructed) EncodeLength() (n int) {
+
+	n = 0
+	for _, node := range p.nodes {
+		n += node.EncodeLength()
+	}
+
+	return
+}
+
+func (p *Constructed) Encode(w io.Writer, length int) (n int, err error) {
+
+	if p == nil {
+		err = newError("Constructed.Encode(): Constructed is nil")
+	}
+
+	var m int
+
+	for _, node := range p.nodes {
+		if m, err = node.Encode(w); err != nil {
+			return
+		}
+		n += m
+	}
+
+	return
+}
+
+func (p *Constructed) Decode(r io.Reader, length int) (n int, err error) {
+
+	if p == nil {
+		err = newError("Constructed.Decode(): Constructed is nil")
+	}
+
+	p.nodes = nil // []Node{}
+
+	var m int
+	//fContinue := true
+	for n < length {
+
+		//fContinue = false
+		node := new(Node)
+		if m, err = node.Decode(r); err != nil {
+			return
+		}
+
+		n += m
+		p.nodes = append(p.nodes, node)
+	}
+	return
+}
+
+func (c *Constructed) AppendChild(child *Node) {
 	if child != nil {
-		n.nodes = append(n.nodes, child)
+		c.nodes = append(c.nodes, child)
+	}
+}
+
+func (c *Constructed) FirstChild() *Node {
+	if len(c.nodes) > 0 {
+		return c.nodes[0]
 	}
 	return nil
 }
 
-func ChildDeserialize_(n *Node, d Deserializer, tag int) error {
-	child := NodeByTag(n.nodes, tag)
-	// child can be nil for an optional value
-	return d.DeserializeDER(child, tag)
+func (c *Constructed) ChildCount() int {
+	return len(c.nodes)
 }
 
-func encodeNodes(ns []*Node) (data []byte, err error) {
-	for _, n := range ns {
-		if n == nil {
-			continue
-		}
-		data, err = EncodeNode(data, n)
-		if err != nil {
-			return nil, err
+func (c *Constructed) ChildByNumber(tn TagNumber) *Node {
+	for _, node := range c.nodes {
+		if node.t.tagNumber == tn {
+			return node
 		}
 	}
-	return data, nil
+	return nil
 }
 
-func decodeNodes(data []byte) (ns []*Node, err error) {
-	for {
-		child := new(Node)
-		data, err = DecodeNode(data, child)
-		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return nil, err
-		}
-		ns = append(ns, child)
+func (c *Constructed) ChildByIndex(index int) *Node {
+	if (0 <= index) && (index < len(c.nodes)) {
+		return c.nodes[index]
 	}
-	return ns, nil
+	return nil
 }

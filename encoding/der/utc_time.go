@@ -1,8 +1,10 @@
 package der
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"math/rand"
 	"time"
 )
 
@@ -17,185 +19,393 @@ YYMMDDhhmmss-hhmm
 
 */
 
-func encodeUTCTime(t time.Time) ([]byte, error) {
-	data := make([]byte, 0, 17)
-	return appendUTCTime(data, t)
+const (
+	timeZoneMin = -12 * 60
+	timeZoneMax = +12 * 60
+)
+
+type UtcTime struct {
+
+	// Date
+	year  int // [0..99]
+	month int // [1..12]
+	day   int // [1..31]
+
+	// Time
+	hour int // [0..23]
+	min  int // [0..59]
+	sec  int // [0..59]
+
+	// Zone
+	zone int // [ -12*60 .. +12*60 ]
+
 }
 
-func decodeUTCTime(data []byte) (time.Time, error) {
-	t, _, err := parseUTCTime(data)
-	return t, err
+const wrong_UtcTime_TimeZone = false
+
+func (p *UtcTime) IsValid() bool {
+
+	// Date
+	if (p.year < 0) || (p.year > 99) {
+		return false
+	}
+
+	if (p.month < 1) || (p.month > 12) {
+		return false
+	}
+
+	if (p.day < 1) || (p.day > 31) {
+		return false
+	}
+
+	// Time
+	if (p.hour < 0) || (p.hour > 23) {
+		return false
+	}
+
+	if (p.min < 0) || (p.min > 59) {
+		return false
+	}
+
+	if (p.sec < 0) || (p.sec > 59) {
+		return false
+	}
+
+	// Zone
+	if (p.zone < timeZoneMin) || (timeZoneMax < p.zone) {
+		return false
+	}
+
+	return true
 }
 
-func appendUTCTime(data []byte, t time.Time) ([]byte, error) {
+func (p *UtcTime) SetValue(t time.Time) (ok bool) {
 
-	year, month, day := t.Date()
+	// Date
+	{
+		year, month, day := t.Date()
 
-	year = yearCollapse(year)
-	if year == -1 {
-		return nil, errors.New("bad convert time to UTCTime: invalid year")
-	}
-	data = appendTwoDigits(data, year)
-	data = appendTwoDigits(data, int(month))
-	data = appendTwoDigits(data, day)
-
-	hour, min, sec := t.Clock()
-
-	data = appendTwoDigits(data, hour)
-	data = appendTwoDigits(data, min)
-	data = appendTwoDigits(data, sec)
-
-	_, offset := t.Zone()
-	offsetMinutes := offset / 60
-
-	switch {
-	case offsetMinutes == 0:
-		return append(data, 'Z'), nil
-	case offsetMinutes > 0:
-		data = append(data, '+')
-	case offsetMinutes < 0:
-		data = append(data, '-')
+		p.year = yearCollapse(year)
+		p.month = int(month)
+		p.day = day
 	}
 
-	if offsetMinutes < 0 {
-		offsetMinutes = -offsetMinutes
+	// Time
+	{
+		hour, min, sec := t.Clock()
+
+		p.hour = hour
+		p.min = min
+		p.sec = sec
 	}
 
-	data = appendTwoDigits(data, offsetMinutes/60) // hours
-	data = appendTwoDigits(data, offsetMinutes%60) // mins
+	// Zone
+	{
+		_, offset := t.Zone()
+		p.zone = offset / 60
+	}
 
-	return data, nil
+	ok = p.IsValid()
+
+	return
 }
 
-func parseUTCTime(data []byte) (time.Time, []byte, error) {
+func (p *UtcTime) GetValue() (t time.Time, ok bool) {
+
+	if !p.IsValid() {
+		ok = false
+		return
+	}
+
+	// Date
+	var (
+		year  = yearExpand(p.year)
+		month = time.Month(p.month)
+		day   = p.day
+	)
+
+	// Time
+	var (
+		hour = p.hour
+		min  = p.min
+		sec  = p.sec
+	)
+
+	// Zone
+	var offset = p.zone * 60
+
+	loc := time.FixedZone("EEST", offset)
+	t = time.Date(year, month, day, hour, min, sec, 0, loc)
+	ok = true
+
+	return
+}
+
+func (p *UtcTime) Equal(other *UtcTime) bool {
+
+	// Date
+	{
+		if p.year != other.year {
+			return false
+		}
+
+		if p.month != other.month {
+			return false
+		}
+
+		if p.day != other.day {
+			return false
+		}
+	}
+
+	// Time
+	{
+		if p.hour != other.hour {
+			return false
+		}
+
+		if p.min != other.min {
+			return false
+		}
+
+		if p.sec != other.sec {
+			return false
+		}
+	}
+
+	if p.zone != other.zone {
+		return false
+	}
+
+	return true
+}
+
+func (p *UtcTime) InitRandomInstance(r *rand.Rand) error {
+
+	// Date
+	p.year = r.Intn(100)     // [ 0 .. 99 ]
+	p.month = 1 + r.Intn(12) // [ 1 .. 12 ]
+	p.day = 1 + r.Intn(31)   // [ 1 .. 31 ]
+
+	// Time
+	p.hour = r.Intn(24) // [ 0 .. 23 ]
+	p.min = r.Intn(60)  // [ 0 .. 59 ]
+	p.sec = r.Intn(60)  // [ 0 .. 59 ]
+
+	// Zone
+	if randBool(r) {
+		p.zone = 0
+	} else {
+		p.zone = randIntRange(r, timeZoneMin, timeZoneMax+1)
+	}
+
+	return nil
+}
+
+func (p *UtcTime) Encode() ([]byte, error) {
 
 	var err error
 
-	ds := make([]int, 6)
-	data, err = parseTwoDigitsSeries(data, ds)
-	if err != nil {
-		return time.Time{}, nil, err
-	}
-
-	var (
-		year  = yearExpand(ds[0])
-		month = time.Month(ds[1])
-		day   = ds[2]
-	)
-
-	var (
-		hour = ds[3]
-		min  = ds[4]
-		sec  = ds[5]
-	)
-
-	if len(data) < 1 {
-		return time.Time{}, nil, errors.New("parse UTCTime: insufficient data length")
-	}
-
-	b := data[0]
-	data = data[1:]
-
-	var negative bool
-	switch b {
-	case 'Z':
-		t := time.Date(year, month, day, hour, min, sec, 0, time.UTC)
-		return t, data, nil
-	case '-':
-		negative = true
-	case '+':
-		negative = false
-	default:
-		return time.Time{}, nil, fmt.Errorf("parse UTCTime: invalid character %q", b)
-	}
-
-	ds = make([]int, 2)
-	data, err = parseTwoDigitsSeries(data, ds)
-	if err != nil {
-		return time.Time{}, nil, err
-	}
-	offsetMinutes := int(ds[0])*60 + int(ds[1])
-	if negative {
-		offsetMinutes = -offsetMinutes
-	}
-	t := time.Date(year, month, day, hour, min, sec, 0, time.UTC)
-	t = t.Add(time.Minute * time.Duration(-offsetMinutes))
-	t = t.In(time.Local)
-
-	return t, data, nil
-}
-
-func appendTwoDigits(data []byte, x int) []byte {
-	var (
-		lo = '0' + byte(x%10)
-		hi = '0' + byte((x/10)%10)
-	)
-	return append(data, hi, lo)
-}
-
-func parseTwoDigits(data []byte) (int, []byte) {
-	if len(data) < 2 {
-		return -1, data
-	}
-
-	hi, ok := byteToDigit(data[0])
-	if !ok {
-		return -1, data
-	}
-
-	lo, ok := byteToDigit(data[1])
-	if !ok {
-		return -1, data
-	}
-
-	x := hi*10 + lo
-
-	return x, data[2:]
-}
-
-func parseTwoDigitsSeries(data []byte, ds []int) ([]byte, error) {
-	var d int
-	for i := range ds {
-		d, data = parseTwoDigits(data)
-		if d == -1 {
-			return nil, errors.New("invalid series of digits")
-		}
-		ds[i] = d
-	}
-	return data, nil
-}
-
-func UTCTimeSerialize(t time.Time, tag int) (*Node, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_UTC_TIME
-	}
-
-	n := NewNode(class, tag)
-	err := n.SetUTCTime(t)
-	if err != nil {
+	if !p.IsValid() {
+		err = newError("UtcTime.Encode(): is not valid")
 		return nil, err
 	}
 
-	return n, nil
+	// MaxLen = 17
+	// len("YYMMDDhhmmss+hhmm") = 17
+	// len("YYMMDDhhmmss-hhmm") = 17
+	buf := bytes.NewBuffer(make([]byte, 0, 17))
+
+	// Date ( YYMMDD )
+	{
+		if err = encodeTwoDigits(buf, p.year); err != nil {
+			return nil, err
+		}
+
+		if err = encodeTwoDigits(buf, p.month); err != nil {
+			return nil, err
+		}
+
+		if err = encodeTwoDigits(buf, p.day); err != nil {
+			return nil, err
+		}
+	}
+
+	// Time ( hhmm, hhmmss )
+	{
+		if err = encodeTwoDigits(buf, p.hour); err != nil {
+			return nil, err
+		}
+
+		if err = encodeTwoDigits(buf, p.min); err != nil {
+			return nil, err
+		}
+
+		if p.sec != 0 {
+			if err = encodeTwoDigits(buf, p.sec); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	// Zone ( Z, +hhmm, -hhmm )
+	{
+		offset := p.zone
+		if offset == 0 {
+			if err = buf.WriteByte('Z'); err != nil {
+				return nil, err
+			}
+		} else {
+
+			switch {
+			case (offset < 0):
+
+				if err = buf.WriteByte('-'); err != nil {
+					return nil, err
+				}
+				offset = -offset
+
+			case (offset > 0):
+
+				if err = buf.WriteByte('+'); err != nil {
+					return nil, err
+				}
+			}
+
+			quo, rem := quoRem(offset, 60)
+
+			hour := quo
+			min := rem
+
+			if err = encodeTwoDigits(buf, hour); err != nil {
+				return nil, err
+			}
+			if err = encodeTwoDigits(buf, min); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	return buf.Bytes(), nil
 }
 
-func UTCTimeDeserialize(n *Node, tag int) (time.Time, error) {
+func (p *UtcTime) Decode(bs []byte) error {
 
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_UTC_TIME
+	// YYMMDDhhmm - 10 bytes
+	if len(bs) < 10 {
+		return fmt.Errorf("Decode UtcTime: insufficient data length: have:%d, want:%d", len(bs), 10)
 	}
 
-	err := CheckNode(n, class, tag)
-	if err != nil {
-		return time.Time{}, err
+	var (
+		//r   rune
+		err error
+	)
+
+	// Date ( YYMMDD )
+	{
+		// Year
+		p.year, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
+		}
+		bs = bs[2:]
+
+		// Month
+		p.month, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
+		}
+		bs = bs[2:]
+
+		// Day
+		p.day, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
+		}
+		bs = bs[2:]
 	}
 
-	return n.GetUTCTime()
+	// Time ( hhmm, hhmmss )
+	{
+		// Hour
+		p.hour, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
+		}
+		bs = bs[2:]
+
+		// Min
+		p.min, err = decodeTwoDigits(bs)
+		if err != nil {
+			return err
+		}
+		bs = bs[2:]
+
+		// Sec
+		{
+			p.sec = 0
+			if len(bs) >= 2 {
+				p.sec, err = decodeTwoDigits(bs)
+				if err == nil {
+					bs = bs[2:]
+				}
+			}
+		}
+	}
+
+	// Zone ( Z, +hhmm, -hhmm )
+	if len(bs) == 0 {
+		if wrong_UtcTime_TimeZone {
+			t := time.Now()
+			_, offset := t.Zone()
+			p.zone = offset / 60
+			return nil
+		}
+		return errors.New("Decode UtcTime: insufficient data length")
+	}
+	sign := bs[0]
+	bs = bs[1:]
+
+	{
+		var offset int
+
+		if sign == 'Z' {
+
+			offset = 0
+
+		} else {
+			var negative bool
+			switch sign {
+			case '-':
+				negative = true
+			case '+':
+				negative = false
+			default:
+				return newError("Wrong utc value")
+			}
+
+			var hour, min int
+
+			if hour, err = decodeTwoDigits(bs); err != nil {
+				return err
+			}
+			bs = bs[2:]
+
+			if min, err = decodeTwoDigits(bs); err != nil {
+				return err
+			}
+			bs = bs[2:]
+
+			offset = (hour*60 + min)
+			if negative {
+				offset = -offset
+			}
+		}
+
+		p.zone = offset
+	}
+
+	return nil
 }
 
 // year: [0..99]

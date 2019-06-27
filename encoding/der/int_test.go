@@ -6,8 +6,6 @@ import (
 	"errors"
 	"math/rand"
 	"testing"
-
-	"github.com/envoker/golang/encoding/der/random"
 )
 
 func byteIsHex(b byte) bool {
@@ -700,7 +698,7 @@ func randInt64(r *rand.Rand) int64 {
 func TestInt64Marshal(t *testing.T) {
 
 	var a, b int64
-	r := random.NewRandNow()
+	r := newRand()
 
 	for i := 0; i < 10000; i++ {
 

@@ -1,34 +1,24 @@
 package der
 
 import (
-	"fmt"
+	"bytes"
 	"reflect"
 )
 
-/*
-type Tag int
-
 type Serializer interface {
-	SerializeDER(params ...interface{}) (*Node, error)
+	SerializeDER() (*Node, error)
 }
 
 type Deserializer interface {
-	DeserializeDER(n *Node, params ...interface{}) error
+	DeserializeDER(*Node) error
 }
 
-ussage:
-	SerializeDER()
-	SerializeDER(der.Tag(0))
-	SerializeDER(der.Tag(1))
-
-*/
-
-type Serializer interface {
-	SerializeDER(tag int) (*Node, error)
+type ContextSerializer interface {
+	ContextSerializeDER(tn TagNumber) (*Node, error)
 }
 
-type Deserializer interface {
-	DeserializeDER(n *Node, tag int) error
+type ContextDeserializer interface {
+	ContextDeserializeDER(tn TagNumber, node *Node) error
 }
 
 var (
@@ -41,17 +31,19 @@ func Marshal(v interface{}) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return EncodeNode(nil, n)
+	var buf bytes.Buffer
+	if _, err = n.Encode(&buf); err != nil {
+		return nil, err
+	}
+	return buf.Bytes(), nil
 }
 
 func Unmarshal(data []byte, v interface{}) error {
+	r := bytes.NewReader(data)
 	n := new(Node)
-	rest, err := DecodeNode(data, n)
+	_, err := n.Decode(r)
 	if err != nil {
 		return err
-	}
-	if len(rest) > 0 {
-		return fmt.Errorf("extra data length %d", len(rest))
 	}
 	return Deserialize(v, n)
 }

@@ -4,8 +4,6 @@ import (
 	"encoding/binary"
 	"math"
 	"reflect"
-
-	"github.com/envoker/golang/encoding/der/coda"
 )
 
 var byteOrder = binary.BigEndian
@@ -98,56 +96,42 @@ func uintDecode(data []byte) (uint64, error) {
 
 func uintSerialize(v reflect.Value) (*Node, error) {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_INTEGER,
-		IsCompound: false,
-	}
-
-	n := new(Node)
-	err := n.setHeader(h)
+	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
 	if err != nil {
 		return nil, err
 	}
 
-	n.data = uintEncode(v.Uint())
+	primitive := node.GetValue().(*Primitive)
+	primitive.SetUint(v.Uint())
 
-	return n, nil
+	return node, nil
 }
 
 func intSerialize(v reflect.Value) (*Node, error) {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_INTEGER,
-		IsCompound: false,
-	}
-
-	n := new(Node)
-	err := n.setHeader(h)
+	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
 	if err != nil {
 		return nil, err
 	}
 
-	n.data = intEncode(v.Int())
+	primitive := node.GetValue().(*Primitive)
+	primitive.SetInt(v.Int())
 
-	return n, nil
+	return node, nil
 }
 
-func uintDeserialize(v reflect.Value, n *Node) error {
+func uintDeserialize(v reflect.Value, node *Node) error {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_INTEGER,
-		IsCompound: false,
-	}
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
 
-	err := n.checkHeader(h)
+	err := node.CheckType(tagType)
 	if err != nil {
 		return err
 	}
 
-	x, err := uintDecode(n.data)
+	primitive := node.GetValue().(*Primitive)
+	x, err := primitive.GetUint()
 	if err != nil {
 		return err
 	}
@@ -176,20 +160,18 @@ func uintDeserialize(v reflect.Value, n *Node) error {
 	return nil
 }
 
-func intDeserialize(v reflect.Value, n *Node) error {
+func intDeserialize(v reflect.Value, node *Node) error {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_INTEGER,
-		IsCompound: false,
-	}
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_INTEGER)
 
-	err := n.checkHeader(h)
+	err := node.CheckType(tagType)
 	if err != nil {
 		return err
 	}
 
-	x, err := intDecode(n.data)
+	primitive := node.GetValue().(*Primitive)
+	x, err := primitive.GetInt()
 	if err != nil {
 		return err
 	}
@@ -216,64 +198,4 @@ func intDeserialize(v reflect.Value, n *Node) error {
 	v.SetInt(x)
 
 	return nil
-}
-
-func IntSerialize(tag int, x int64) (*Node, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_INTEGER
-	}
-
-	n := NewNode(class, tag)
-	n.SetInt(x)
-
-	return n, nil
-}
-
-func IntDeserialize(n *Node, tag int) (int64, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_INTEGER
-	}
-
-	err := CheckNode(n, class, tag)
-	if err != nil {
-		return 0, err
-	}
-
-	return n.GetInt()
-}
-
-func UintSerialize(tag int, x uint64) (*Node, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_INTEGER
-	}
-
-	n := NewNode(class, tag)
-	n.SetUint(x)
-
-	return n, nil
-}
-
-func UintDeserialize(n *Node, tag int) (uint64, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_INTEGER
-	}
-
-	err := CheckNode(n, class, tag)
-	if err != nil {
-		return 0, err
-	}
-
-	return n.GetUint()
 }

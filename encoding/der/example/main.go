@@ -2,10 +2,12 @@ package main
 
 import (
 	"bytes"
-	"encoding/asn1"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"math/rand"
+	"time"
 
 	"github.com/envoker/golang/encoding/der"
 )
@@ -13,10 +15,8 @@ import (
 func main() {
 
 	fn := derHex
-	//fn := testUint64
 	//fn := testIntDER
 	//fn := testIntJSON
-	//fn := testPersone
 
 	if err := fn(); err != nil {
 		fmt.Println(err)
@@ -27,35 +27,31 @@ func derHex() error {
 
 	const hexDump = `30-2E-A0-03-02-01-01-A1 03-02-01-01-A2-03-02-01
 01-A3-08-0C-06-31-32-33 34-35-36-A4-13-17-11-31
-35-31-32-31-37-31-37-34 38-34-34-2B-30-33-30-30`
+35-31-32-31-37-31-37-34 38-34-34-2B-30-33-30-30
+30-00-B8`
 
 	s := onlyHex(hexDump)
 
-	data1, err := hex.DecodeString(s)
+	bs, err := hex.DecodeString(s)
 	if err != nil {
 		return err
 	}
 
-	n := new(der.Node)
+	buffer := bytes.NewBuffer(bs)
 
-	_, err = der.DecodeNode(data1, n)
+	node := new(der.Node)
+
+	_, err = node.Decode(buffer)
 	if err != nil {
 		return err
 	}
 
-	s, err = der.ConvertToString(n)
+	s, err = der.ConvertToString(node)
 	if err != nil {
 		return err
 	}
 
 	fmt.Println(s)
-
-	data2, err := der.EncodeNode(nil, n)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("equal: %t\n", bytes.Equal(data1, data2))
 
 	return nil
 }
@@ -89,6 +85,46 @@ func onlyHex(s string) string {
 	}
 
 	return string(res)
+}
+
+func newRand() *rand.Rand {
+	return rand.New(rand.NewSource(time.Now().UnixNano()))
+}
+
+func TestTagType() error {
+
+	var (
+		t1, t2 der.TagType
+		err    error
+		m      int
+	)
+
+	r := newRand()
+
+	buffer := new(bytes.Buffer)
+
+	const n = 10000000
+	for i := 0; i < n; i++ {
+
+		t1.InitRandomInstance(r)
+
+		buffer.Reset()
+
+		m, err = t1.Encode(buffer)
+		if (err != nil) || (m == 0) {
+			return errors.New("Encode Error")
+		}
+		m, err = t2.Decode(buffer)
+		if (err != nil) || (m == 0) {
+			return errors.New("Decode Error")
+		}
+
+		if !((&t1).Equal(&t2)) {
+			return errors.New(fmt.Sprintf("Equal Error: iter %d", i))
+		}
+	}
+
+	return nil
 }
 
 type uint64Sample struct {
@@ -126,7 +162,7 @@ func testUint64() error {
 			return err
 		}
 
-		fmt.Printf("newUint64Sample(%d, \"%X\"),\n", a, data)
+		fmt.Printf("newUint64Sample(%d, \"% X\"),\n", a, data)
 	}
 
 	return nil
@@ -170,7 +206,7 @@ func testInt64() error {
 			return err
 		}
 
-		fmt.Printf("newInt64Sample(%d, \"%X\"),\n", a, data)
+		fmt.Printf("newInt64Sample(%d, \"% X\"),\n", a, data)
 	}
 
 	return nil
@@ -208,7 +244,7 @@ func testIntJSON() error {
 		return err
 	}
 
-	var b int
+	var b uint8
 
 	err = json.Unmarshal(data, &b)
 	if err != nil {
@@ -216,50 +252,6 @@ func testIntJSON() error {
 	}
 
 	fmt.Println(b)
-
-	return nil
-}
-
-type Persone struct {
-	Name string `asn1:"tag:0" der:"tag:0"`
-	Age  int    `asn1:"tag:1" der:"tag:1"`
-	Desc string `asn1:"tag:2" der:"tag:2,optional"`
-}
-
-func newString(s string) *string {
-	return &s
-}
-
-func testPersone() error {
-
-	a := Persone{
-		Name: "John",
-		Age:  -97,
-		Desc: "Аргентина манит негра",
-	}
-
-	data, err := der.Marshal(&a)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%X\n", data)
-
-	var b Persone
-
-	err = der.Unmarshal(data, &b)
-	if err != nil {
-		return err
-	}
-
-	fmt.Printf("%+v\n", b)
-	fmt.Println("desc:", b.Desc)
-
-	data, err = asn1.Marshal(a)
-	if err != nil {
-		return err
-	}
-	fmt.Printf("%X\n", data)
 
 	return nil
 }

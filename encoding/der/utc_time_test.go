@@ -1,59 +1,38 @@
 package der
 
 import (
-	"math/rand"
 	"testing"
-	"time"
-
-	"github.com/envoker/golang/encoding/der/random"
 )
 
-func randUTCTime(r *rand.Rand, loc *time.Location) time.Time {
-
-	year := random.RangeInt(r, 1950, 2050)
-	month := time.Month(1 + r.Intn(12))
-	day := 1 + r.Intn(DaysIn(month, year))
-
-	hour := r.Intn(24)
-	min := r.Intn(60)
-	sec := r.Intn(60)
-
-	return time.Date(year, month, day, hour, min, sec, 0, loc)
-}
-
-func DaysIn(month time.Month, year int) int {
-
-	return 30
-}
-
 func TestTimeEncodeDecode(t *testing.T) {
-	r := random.NewRandNow()
-	//const halfDay = 60 * 60 * 12
-	for i := 0; i < 100; i++ {
 
-		//offset := random.RangeInt(r, -halfDay, halfDay)
-		// loc := time.FixedZone("YUH", offset)
-		loc := time.Local
+	var (
+		utc1, utc2 UtcTime
+		bs         []byte
+		err        error
+	)
 
-		t1 := randUTCTime(r, loc)
-		//t.Log(t1)
-		//t1 = t1.In(loc)
+	r := newRand()
 
-		data, err := encodeUTCTime(t1)
-		if err != nil {
-			t.Fatal(err)
+	const n = 100
+	for i := 0; i < n; i++ {
+
+		utc1.InitRandomInstance(r)
+
+		if bs, err = utc1.Encode(); err != nil {
+			t.Error(err)
+			return
+		}
+		//t.Logf("[ %s ]\n", string(bs))
+
+		if err = utc2.Decode(bs); err != nil {
+			t.Error(err)
+			return
 		}
 
-		//t.Logf("%s", data)
-
-		t2, err := decodeUTCTime(data)
-		if err != nil {
-			t.Fatal(err)
-		}
-		//t2 = t2.In(loc)
-
-		if !(t1.Equal(t2)) {
-			t.Fatalf("(%v) != (%v)", t1, t2)
+		if !utc1.Equal(&utc2) {
+			t.Error("decode: not equal")
+			return
 		}
 	}
 }

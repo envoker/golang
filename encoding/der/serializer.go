@@ -3,8 +3,6 @@ package der
 import (
 	"errors"
 	"reflect"
-
-	"github.com/envoker/golang/encoding/der/coda"
 )
 
 func Serialize(v interface{}) (*Node, error) {
@@ -67,21 +65,17 @@ func funcSerialize(v reflect.Value) (*Node, error) {
 	}
 
 	s := v.Interface().(Serializer)
-	return s.SerializeDER(-1)
+	return s.SerializeDER()
 }
 
 func nullSerialize(v reflect.Value) (*Node, error) {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_NULL,
-		IsCompound: false,
+	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_NULL)
+	if err != nil {
+		return nil, err
 	}
 
-	n := new(Node)
-	n.setHeader(h)
-
-	return n, nil
+	return node, nil
 }
 
 func float32Serialize(v reflect.Value) (*Node, error) {
@@ -96,34 +90,29 @@ func float64Serialize(v reflect.Value) (*Node, error) {
 
 func stringSerialize(v reflect.Value) (*Node, error) {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_UTF8_STRING,
-		IsCompound: false,
+	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_UTF8_STRING)
+	if err != nil {
+		return nil, err
 	}
 
-	n := new(Node)
-	n.setHeader(h)
+	primitive := node.GetValue().(*Primitive)
+	data := []byte(v.String())
+	primitive.SetBytes(data)
 
-	n.data = []byte(v.String())
-
-	return n, nil
+	return node, nil
 }
 
 func bytesSerialize(v reflect.Value) (*Node, error) {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_OCTET_STRING,
-		IsCompound: false,
+	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_OCTET_STRING)
+	if err != nil {
+		return nil, err
 	}
 
-	n := new(Node)
-	n.setHeader(h)
+	primitive := node.GetValue().(*Primitive)
+	primitive.SetBytes(v.Bytes())
 
-	n.data = cloneBytes(v.Bytes())
-
-	return n, nil
+	return node, nil
 }
 
 func structSerialize(v reflect.Value) (*Node, error) {
@@ -133,19 +122,26 @@ func structSerialize(v reflect.Value) (*Node, error) {
 		return nil, err
 	}
 
-	n := NewConstructed(-1)
+	node, err := NewNodeSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	container := node.GetValue().(Container)
+
 	for i := 0; i < v.NumField(); i++ {
-		err := structFieldSerialize(n, v.Field(i), &(tinfo.fields[i]))
+		err := structFieldSerialize(container, v.Field(i), &(tinfo.fields[i]))
 		if err != nil {
 			return nil, err
 		}
 	}
-	return n, nil
+
+	return node, nil
 }
 
-func structFieldSerialize(n *Node, v reflect.Value, finfo *fieldInfo) error {
+func structFieldSerialize(container Container, v reflect.Value, finfo *fieldInfo) error {
 
-	if (v.Kind() == reflect.Ptr) && (v.IsNil()) {
+	if v.IsNil() {
 		if finfo.optional {
 			return nil
 		} else {
@@ -153,22 +149,26 @@ func structFieldSerialize(n *Node, v reflect.Value, finfo *fieldInfo) error {
 		}
 	}
 
-	if finfo.tag == nil {
-		return nil
+	if finfo.tag != nil {
+
+		tn := TagNumber(*(finfo.tag))
+
+		cs, err := ConstructedNewNode(tn)
+		if err != nil {
+			return err
+		}
+
+		fn := getSerializeFunc(v.Type())
+		child, err := fn(v)
+		if err != nil {
+			return err
+		}
+
+		c := cs.GetValue().(Container)
+		c.AppendChild(child)
+
+		container.AppendChild(cs)
 	}
-
-	tag := *(finfo.tag)
-
-	cs := NewConstructed(tag)
-
-	fn := getSerializeFunc(v.Type())
-	child, err := fn(v)
-	if err != nil {
-		return err
-	}
-
-	cs.nodes = []*Node{child}
-	n.nodes = append(n.nodes, cs)
 
 	return nil
 }
@@ -201,21 +201,30 @@ func newArraySerialize(t reflect.Type) serializeFunc {
 }
 
 func (p *arraySerializer) encode(v reflect.Value) (*Node, error) {
+
 	if (v.Kind() == reflect.Ptr) && v.IsNil() {
 		return nullSerialize(v)
 	}
-	n := NewConstructed(-1)
-	k := v.Len()
-	for i := 0; i < k; i++ {
+
+	node, err := NewNodeSequence()
+	if err != nil {
+		return nil, err
+	}
+
+	c := node.GetValue().(Container)
+
+	n := v.Len()
+	for i := 0; i < n; i++ {
 
 		child, err := p.fn(v.Index(i))
 		if err != nil {
 			return nil, err
 		}
 
-		n.nodes = append(n.nodes, child)
+		c.AppendChild(child)
 	}
-	return n, nil
+
+	return node, nil
 }
 
 func newSliceSerialize(t reflect.Type) serializeFunc {

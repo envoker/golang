@@ -5,25 +5,23 @@ import (
 	"fmt"
 	"reflect"
 	"unicode/utf8"
-
-	"github.com/envoker/golang/encoding/der/coda"
 )
 
-func Deserialize(v interface{}, n *Node) error {
-	return valueDeserialize(reflect.ValueOf(v), n)
+func Deserialize(v interface{}, node *Node) error {
+	return valueDeserialize(reflect.ValueOf(v), node)
 }
 
-func valueDeserialize(v reflect.Value, n *Node) error {
+func valueDeserialize(v reflect.Value, node *Node) error {
 
 	if v.Kind() != reflect.Ptr {
 		return errors.New("value is not ptr")
 	}
 
 	fn := getDeserializeFunc(v.Type())
-	return fn(v, n)
+	return fn(v, node)
 }
 
-type deserializeFunc func(reflect.Value, *Node) error
+type deserializeFunc func(v reflect.Value, node *Node) error
 
 func getDeserializeFunc(t reflect.Type) deserializeFunc {
 
@@ -67,74 +65,76 @@ func getDeserializeFunc(t reflect.Type) deserializeFunc {
 	return nil
 }
 
-func funcDeserialize(v reflect.Value, n *Node) error {
+func funcDeserialize(v reflect.Value, node *Node) error {
 	d := v.Interface().(Deserializer)
-	return d.DeserializeDER(n, -1)
+	return d.DeserializeDER(node)
 }
 
-func float32Deserialize(v reflect.Value, n *Node) error {
+func float32Deserialize(v reflect.Value, node *Node) error {
 
 	return nil
 }
 
-func float64Deserialize(v reflect.Value, n *Node) error {
+func float64Deserialize(v reflect.Value, node *Node) error {
 
 	return nil
 }
 
-func stringDeserialize(v reflect.Value, n *Node) error {
+func stringDeserialize(v reflect.Value, node *Node) error {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_UTF8_STRING,
-		IsCompound: false,
-	}
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_UTF8_STRING)
 
-	err := n.checkHeader(h)
+	err := node.CheckType(tagType)
 	if err != nil {
 		return err
 	}
 
-	data := n.data
+	primitive := node.GetValue().(*Primitive)
+	data := primitive.Bytes()
+
 	if !utf8.Valid(data) {
-		return errors.New("asn1: invalid UTF-8 string")
+		return ErrorUnmarshalString{data, "wrong utf-8 format"}
 	}
+
 	v.SetString(string(data))
 
 	return nil
 }
 
-func bytesDeserialize(v reflect.Value, n *Node) error {
+func bytesDeserialize(v reflect.Value, node *Node) error {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_OCTET_STRING,
-		IsCompound: false,
-	}
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_OCTET_STRING)
 
-	err := n.checkHeader(h)
+	err := node.CheckType(tagType)
 	if err != nil {
 		return err
 	}
-	v.SetBytes(cloneBytes(n.data))
+
+	primitive := node.GetValue().(*Primitive)
+	v.SetBytes(primitive.Bytes())
+
 	return nil
 }
 
-func structDeserialize(v reflect.Value, n *Node) error {
+func structDeserialize(v reflect.Value, node *Node) error {
 
 	tinfo, err := getTypeInfo(v.Type())
 	if err != nil {
 		return err
 	}
 
-	err = CheckConstructed(n, -1)
+	err = CheckNodeSequence(node)
 	if err != nil {
 		return err
 	}
 
+	container := node.GetValue().(Container)
+
 	for i := 0; i < v.NumField(); i++ {
 		field := v.Field(i)
-		err := structFieldDeserialize(n.nodes, field, &(tinfo.fields[i]))
+		err := structFieldDeserialize(container, field, &(tinfo.fields[i]))
 		if err != nil {
 			return fmt.Errorf("der: field no.%d (for type %v) deserialize error: %s", i, field.Type(), err)
 		}
@@ -143,34 +143,36 @@ func structDeserialize(v reflect.Value, n *Node) error {
 	return nil
 }
 
-func structFieldDeserialize(nodes []*Node, v reflect.Value, finfo *fieldInfo) error {
+func structFieldDeserialize(container Container, v reflect.Value, finfo *fieldInfo) error {
 
-	if finfo.tag == nil {
-		return errors.New("tag is nil")
-	}
+	if finfo.tag != nil {
 
-	tag := *(finfo.tag)
+		tn := TagNumber(*(finfo.tag))
 
-	cs := NodeByTag(nodes, tag)
-	if cs == nil {
-		if finfo.optional {
-			valueSetZero(v)
-			return nil
+		cs := container.ChildByNumber(tn)
+		if cs == nil {
+			if finfo.optional {
+				valueSetZero(v)
+				return nil
+			}
+			return errors.New("Deserializer is nil")
 		}
-		return errors.New("Deserializer is nil")
+
+		err := ConstructedCheckNode(tn, cs)
+		if err != nil {
+			return err
+		}
+
+		c := cs.GetValue().(Container)
+		child := c.FirstChild()
+
+		valueMake(v)
+
+		fn := getDeserializeFunc(v.Type())
+		return fn(v, child)
 	}
 
-	err := CheckConstructed(cs, tag)
-	if err != nil {
-		return err
-	}
-
-	child := cs.nodes[0]
-
-	valueMake(v)
-
-	fn := getDeserializeFunc(v.Type())
-	return fn(v, child)
+	return errors.New("tag is nil")
 }
 
 type ptrDeserializer struct {
@@ -182,24 +184,21 @@ func newPtrDeserialize(t reflect.Type) deserializeFunc {
 	return d.decode
 }
 
-func (p *ptrDeserializer) decode(v reflect.Value, n *Node) error {
+func (p *ptrDeserializer) decode(v reflect.Value, node *Node) error {
 
 	if v.IsNil() {
 		return fmt.Errorf("der: Decode(nil %s)", v.Type())
 	}
 
-	return ptrValueDeserialize(v.Elem(), n, p.fn)
+	return ptrValueDeserialize(v.Elem(), node, p.fn)
 }
 
-func ptrValueDeserialize(v reflect.Value, n *Node, fn deserializeFunc) error {
+func ptrValueDeserialize(v reflect.Value, node *Node, fn deserializeFunc) error {
 
-	h := coda.Header{
-		Class:      CLASS_UNIVERSAL,
-		Tag:        TAG_NULL,
-		IsCompound: false,
-	}
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_NULL)
 
-	err := n.checkHeader(h)
+	err := node.CheckType(tagType)
 	if err == nil {
 		valueSetZero(v)
 		return nil
@@ -211,7 +210,7 @@ func ptrValueDeserialize(v reflect.Value, n *Node, fn deserializeFunc) error {
 		}
 	}
 
-	return fn(v, n)
+	return fn(v, node)
 }
 
 type arrayDeserializer struct {
@@ -223,7 +222,7 @@ func newArrayDeserialize(t reflect.Type) deserializeFunc {
 	return d.decode
 }
 
-func (p *arrayDeserializer) decode(v reflect.Value, n *Node) error {
+func (p *arrayDeserializer) decode(v reflect.Value, node *Node) error {
 
 	return nil
 }

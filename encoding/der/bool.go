@@ -20,44 +20,34 @@ func boolDecode(data []byte) (bool, error) {
 }
 
 func boolSerialize(v reflect.Value) (*Node, error) {
-	return BoolSerialize(v.Bool(), -1)
+
+	node, err := NewNode(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_BOOLEAN)
+	if err != nil {
+		return nil, err
+	}
+
+	primitive := node.GetValue().(*Primitive)
+	primitive.SetBool(v.Bool())
+
+	return node, nil
 }
 
-func boolDeserialize(v reflect.Value, n *Node) error {
-	b, err := BoolDeserialize(n, -1)
+func boolDeserialize(v reflect.Value, node *Node) error {
+
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_BOOLEAN)
+
+	err := node.CheckType(tagType)
 	if err != nil {
 		return err
 	}
-	v.SetBool(b)
-	return nil
-}
 
-func BoolSerialize(b bool, tag int) (*Node, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_BOOLEAN
-	}
-
-	n := NewNode(class, tag)
-	n.SetBool(b)
-
-	return n, nil
-}
-
-func BoolDeserialize(n *Node, tag int) (bool, error) {
-
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_BOOLEAN
-	}
-
-	err := CheckNode(n, class, tag)
+	primitive := node.GetValue().(*Primitive)
+	x, err := primitive.GetBool()
 	if err != nil {
-		return false, err
+		return err
 	}
+	v.SetBool(x)
 
-	return n.GetBool()
+	return nil
 }

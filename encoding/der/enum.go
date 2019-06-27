@@ -1,37 +1,37 @@
 package der
 
-// Enumerated
-func EnumSerialize(e int, tag int) (*Node, error) {
+func EnumSerialize(x int64) (*Node, error) {
 
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_ENUMERATED
+	var t TagType
+	t.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_ENUMERATED)
+
+	node := new(Node)
+	if err := node.SetType(t); err != nil {
+		return nil, err
 	}
 
-	n := NewNode(class, tag)
-	n.SetInt(int64(e))
+	primitive := node.GetValue().(*Primitive)
+	primitive.SetInt(x)
 
-	return n, nil
+	return node, nil
 }
 
-func EnumDeserialize(n *Node, tag int) (int, error) {
+func EnumDeserialize(node *Node) (int64, error) {
 
-	class := CLASS_CONTEXT_SPECIFIC
-	if tag < 0 {
-		class = CLASS_UNIVERSAL
-		tag = TAG_ENUMERATED
-	}
+	var t TagType
+	t.Init(CLASS_UNIVERSAL, VT_PRIMITIVE, UT_ENUMERATED)
 
-	err := CheckNode(n, class, tag)
+	err := node.CheckType(t)
 	if err != nil {
 		return 0, err
 	}
 
-	i, err := n.GetInt()
+	primitive := node.GetValue().(*Primitive)
+
+	x, err := primitive.GetInt()
 	if err != nil {
 		return 0, err
 	}
 
-	return int(i), nil
+	return x, nil
 }

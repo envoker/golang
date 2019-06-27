@@ -1,263 +1,187 @@
 package der
 
 import (
-	"errors"
 	"fmt"
-	"time"
-	"unicode/utf8"
-
-	"github.com/envoker/golang/encoding/der/coda"
+	"io"
 )
-
-var (
-	ErrNodeIsConstructed    = errors.New("node is constructed")
-	ErrNodeIsNotConstructed = errors.New("node is not constructed")
-)
-
-/*
-
-golang asn1:
-
-type RawValue struct {
-	Class, Tag int
-	IsCompound bool
-	Bytes      []byte
-	FullBytes  []byte // includes the tag and length
-}
-
-*/
 
 type Node struct {
-	class       int
-	tag         int
-	constructed bool // isCompound
-
-	data  []byte  // Primitive:   (isCompound = false)
-	nodes []*Node // Constructed: (isCompound = true)
+	t TagType
+	v ValueCoder
 }
 
-func NewNode(class int, tag int) *Node {
-	return &Node{
-		class: class,
-		tag:   tag,
+func NewNode(class Class, valueType ValueType, tagNumber TagNumber) (*Node, error) {
+
+	var t TagType = TagType{class, valueType, tagNumber}
+	if !t.IsValid() {
+		return nil, newError("NewNode(): TagType is not valid")
 	}
+
+	var n Node
+
+	switch t.valueType {
+	case VT_PRIMITIVE:
+		n.v = new(Primitive)
+
+	case VT_CONSTRUCTED:
+		n.v = new(Constructed)
+	default:
+		return nil, newError("NewNode(): TagType is wrong")
+	}
+
+	n.t = t
+
+	return &n, nil
 }
 
-func CheckNode(n *Node, class int, tag int) error {
-	if n.class != class {
-		return fmt.Errorf("class: %d != %d", n.class, class)
+func (n *Node) GetValue() (v ValueCoder) {
+
+	if n != nil {
+		v = n.v
 	}
-	if n.tag != tag {
-		return fmt.Errorf("tag: %d != %d", n.tag, tag)
+
+	return v
+}
+
+func (n *Node) SetType(t TagType) error {
+
+	if n == nil {
+		return newError("Node.SetType(): Node is nil")
 	}
+
+	if !t.IsValid() {
+		return newError("Node.SetType(): type is not valid")
+	}
+
+	switch t.valueType {
+	case VT_PRIMITIVE:
+		n.v = new(Primitive)
+
+	case VT_CONSTRUCTED:
+		n.v = new(Constructed)
+	}
+
+	n.t = t
+
 	return nil
 }
 
-func (n *Node) GetTag() int {
-	return n.tag
+func (n *Node) GetType() TagType {
+	return n.t
 }
 
-func (n *Node) getHeader() coda.Header {
-	return coda.Header{
-		Class:      n.class,
-		Tag:        n.tag,
-		IsCompound: n.constructed,
-	}
-}
-
-func (n *Node) IsPrimitive() bool {
-	return !(n.constructed)
-}
-
-func (n *Node) IsConstructed() bool {
-	return (n.constructed)
-}
-
-func (n *Node) setHeader(h coda.Header) error {
-	*n = Node{
-		class:       h.Class,
-		tag:         h.Tag,
-		constructed: h.IsCompound,
-	}
-	return nil
-}
-
-func (n *Node) checkHeader(h coda.Header) error {
-	k := n.getHeader()
-	if !coda.EqualHeaders(k, h) {
-		return errors.New("der: invalid header")
-	}
-	return nil
-}
-
-func EncodeNode(data []byte, n *Node) (rest []byte, err error) {
-
-	header := n.getHeader()
-	data, err = coda.EncodeHeader(data, &header)
-	if err != nil {
-		return nil, err
-	}
-
-	value, err := encodeValue(n)
-	if err != nil {
-		return nil, err
-	}
-
-	length := len(value)
-	data, err = coda.EncodeLength(data, length)
-	if err != nil {
-		return nil, err
-	}
-
-	data = append(data, value...)
-	return data, err
-}
-
-func DecodeNode(data []byte, n *Node) (rest []byte, err error) {
-
-	var header coda.Header
-	data, err = coda.DecodeHeader(data, &header)
-	if err != nil {
-		return nil, err
-	}
-	err = n.setHeader(header)
-	if err != nil {
-		return nil, err
-	}
-
-	var length int
-	data, err = coda.DecodeLength(data, &length)
-	if err != nil {
-		return nil, err
-	}
-	if len(data) < length {
-		return nil, errors.New("insufficient data length")
-	}
-
-	err = decodeValue(data[:length], n)
-	if err != nil {
-		return nil, err
-	}
-
-	rest = data[length:]
-
-	return rest, nil
-}
-
-func encodeValue(n *Node) ([]byte, error) {
-	if !n.constructed {
-		return cloneBytes(n.data), nil
-	}
-	return encodeNodes(n.nodes)
-}
-
-func decodeValue(data []byte, n *Node) error {
-
-	if !n.constructed {
-		n.data = cloneBytes(data)
+func (n *Node) CheckType(t TagType) error {
+	if n.t.Equal(&t) {
 		return nil
 	}
+	return fmt.Errorf("der: node has type %s although expected %s", n.t.String(), t.String())
+}
 
-	ns, err := decodeNodes(data)
-	if err != nil {
-		return err
+func (n *Node) EncodeLength() (c int) {
+
+	c = n.t.EncodeLength()
+	valueLength := n.v.EncodeLength()
+	L := Length(valueLength)
+	c += L.EncodeLength()
+	c += valueLength
+
+	return
+}
+
+func (n *Node) Encode(w io.Writer) (c int, err error) {
+
+	if n == nil {
+		err = newError("Node.Encode(): Node is nil")
+		return
 	}
-	n.nodes = ns
 
-	return nil
-}
+	var cn int
+	var valueLength int
 
-//----------------------------------------------------------------------------
-
-func (n *Node) SetNodes(ns []*Node) {
-	n.constructed = true
-	n.nodes = ns
-}
-
-func (n *Node) GetNodes() ([]*Node, error) {
-	if !n.constructed {
-		return nil, ErrNodeIsNotConstructed
+	// 	Type
+	{
+		if cn, err = n.t.Encode(w); err != nil {
+			return
+		}
+		c += cn
 	}
-	return n.nodes, nil
-}
 
-func (n *Node) SetBool(b bool) {
-	n.constructed = false
-	n.data = boolEncode(b)
-}
+	//	Length
+	{
+		valueLength = n.v.EncodeLength()
 
-func (n *Node) GetBool() (bool, error) {
-	if n.constructed {
-		return false, ErrNodeIsConstructed
+		L := Length(valueLength)
+
+		if cn, err = L.Encode(w); err != nil {
+			return
+		}
+		c += cn
 	}
-	return boolDecode(n.data)
-}
 
-func (n *Node) SetInt(i int64) {
-	n.constructed = false
-	n.data = intEncode(i)
-}
-
-func (n *Node) GetInt() (int64, error) {
-	if n.constructed {
-		return 0, ErrNodeIsConstructed
+	//	Value
+	{
+		if cn, err = n.v.Encode(w, valueLength); err != nil {
+			return
+		}
+		c += cn
 	}
-	return intDecode(n.data)
+
+	return
 }
 
-func (n *Node) SetUint(u uint64) {
-	n.constructed = false
-	n.data = uintEncode(u)
-}
+func (n *Node) Decode(r io.Reader) (c int, err error) {
 
-func (n *Node) GetUint() (uint64, error) {
-	if n.constructed {
-		return 0, ErrNodeIsConstructed
+	if n == nil {
+		err = newError("Node.Decode(): Node is nil")
+		return
 	}
-	return uintDecode(n.data)
-}
 
-func (n *Node) SetBytes(bs []byte) {
-	n.constructed = false
-	n.data = bs
-}
+	var cn int
+	var valueLength int
 
-func (n *Node) GetBytes() ([]byte, error) {
-	if n.constructed {
-		return nil, ErrNodeIsConstructed
+	// 	Type
+	{
+		var T TagType
+		if cn, err = T.Decode(r); err != nil {
+			return
+		}
+
+		if err = n.SetType(T); err != nil {
+			return
+		}
+
+		c += cn
 	}
-	return n.data, nil
+
+	//	Length
+	{
+		var L Length
+
+		if cn, err = L.Decode(r); err != nil {
+			return
+		}
+		c += cn
+
+		valueLength = int(L)
+	}
+
+	//	Value
+	{
+		if cn, err = n.v.Decode(r, valueLength); err != nil {
+			return
+		}
+		c += cn
+	}
+
+	return
 }
 
-func (n *Node) SetString(s string) {
-	n.constructed = false
-	n.data = []byte(s)
+func NewNodeSequence() (*Node, error) {
+	return NewNode(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
 }
 
-func (n *Node) GetString() (string, error) {
-	if n.constructed {
-		return "", ErrNodeIsConstructed
-	}
-	if !utf8.Valid(n.data) {
-		return "", errors.New("invalid utf8 string")
-		//return "", errors.New("data is not utf-8 string")
-	}
-	return string(n.data), nil
-}
-
-func (n *Node) SetUTCTime(t time.Time) error {
-	data, err := encodeUTCTime(t)
-	if err != nil {
-		return err
-	}
-	n.constructed = false
-	n.data = data
-	return nil
-}
-
-func (n *Node) GetUTCTime() (time.Time, error) {
-	if n.constructed {
-		return time.Time{}, ErrNodeIsConstructed
-	}
-	return decodeUTCTime(n.data)
+func CheckNodeSequence(node *Node) error {
+	var tagType TagType
+	tagType.Init(CLASS_UNIVERSAL, VT_CONSTRUCTED, UT_SEQUENCE)
+	return node.CheckType(tagType)
 }
